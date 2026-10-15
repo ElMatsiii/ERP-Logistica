@@ -1,0 +1,25 @@
+{
+  "name": "lesgo-erp-server",
+  "version": "1.0.0",
+  "description": "Backend API para LesGo ERP - Módulo de Logística",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "prisma": "^6.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

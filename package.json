@@ -1,0 +1,45 @@
+{
+  "name": "lesgo-erp-logistica",
+  "version": "1.0.0",
+  "description": "Módulo de Logística y Transporte para LesGo ERP (Sets LEGO)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,magenta\" \"npm run server\" \"npm run client\"",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "db:migrate": "prisma migrate dev --name init",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "npm run db:push && npm run db:seed",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "build": "npm --prefix server run build && npm --prefix client run build"
+  },
+  "keywords": [
+    "lego",
+    "erp",
+    "logistics",
+    "transport",
+    "prisma",
+    "react",
+    "express"
+  ],
+  "author": "Grupo 6 - Maximiliano Pizarro, Máximo Sazo, Nicolás Rojas, Daniela Infante, Javier Catalán, Bastián Salinas",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.2.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "concurrently": "^9.1.2",
+    "prisma": "^6.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

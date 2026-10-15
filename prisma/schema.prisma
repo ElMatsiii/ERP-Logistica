@@ -1,0 +1,225 @@
+// Prisma schema for LesGo ERP - Módulo de Logística y Transporte
+// Sprint 2 - MVP
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator serverClient {
+  provider = "prisma-client-js"
+  output   = "../server/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoOT {
+  PENDIENTE
+  EN_PROCESO
+  PARCIAL
+  CERRADO
+}
+
+model log_transportista {
+  id                          Int             @id @default(autoincrement())
+  rut                         String          @unique
+  nombre                      String
+  contacto_email              String
+  contacto_telefono           String
+  factor_volumetrico_default  Int             @default(5000)
+  activo                      Boolean         @default(true)
+
+  servicios                   log_servicio[]
+  guias                       log_guia_despacho[]
+
+  @@map("log_transportista")
+}
+
+model log_servicio {
+  id                          Int             @id @default(autoincrement())
+  transportista_id            Int
+  nombre                      String
+  dias_transito_comprometidos Int
+  activo                      Boolean         @default(true)
+
+  transportista               log_transportista @relation(fields: [transportista_id], references: [id], onDelete: Cascade)
+  coberturas                  log_cobertura[]
+  tarifas                     log_tarifa[]
+  guias                       log_guia_despacho[]
+
+  @@map("log_servicio")
+}
+
+model log_region {
+  id      Int          @id @default(autoincrement())
+  nombre  String
+
+  comunas log_comuna[]
+
+  @@map("log_region")
+}
+
+model log_comuna {
+  id          Int             @id @default(autoincrement())
+  region_id   Int
+  nombre      String
+
+  region      log_region      @relation(fields: [region_id], references: [id], onDelete: Cascade)
+  coberturas  log_cobertura[]
+  tarifas     log_tarifa[]
+  direcciones log_direccion[]
+
+  @@map("log_comuna")
+}
+
+model log_cobertura {
+  id             Int          @id @default(autoincrement())
+  servicio_id    Int
+  comuna_id      Int
+  vigencia_desde DateTime
+  vigencia_hasta DateTime
+  vigente        Boolean      @default(true)
+
+  servicio       log_servicio @relation(fields: [servicio_id], references: [id], onDelete: Cascade)
+  comuna         log_comuna   @relation(fields: [comuna_id], references: [id], onDelete: Cascade)
+
+  @@map("log_cobertura")
+}
+
+model log_tarifa {
+  id                  Int          @id @default(autoincrement())
+  servicio_id         Int
+  comuna_id           Int
+  peso_desde_kg       Decimal      @db.Decimal(10, 2)
+  peso_hasta_kg       Decimal      @db.Decimal(10, 2)
+  precio_base         Decimal      @db.Decimal(10, 2)
+  precio_kg_adicional Decimal      @db.Decimal(10, 2)
+  vigencia_desde      DateTime
+  vigencia_hasta      DateTime
+
+  servicio            log_servicio @relation(fields: [servicio_id], references: [id], onDelete: Cascade)
+  comuna              log_comuna   @relation(fields: [comuna_id], references: [id], onDelete: Cascade)
+
+  @@map("log_tarifa")
+}
+
+model log_direccion {
+  id             Int                @id @default(autoincrement())
+  cliente_id     Int
+  cliente_nombre String?
+  cliente_rut    String?
+  comuna_id      Int
+  calle          String
+  numero         String
+  depto          String?
+  referencia     String?
+  activa         Boolean            @default(true)
+
+  comuna         log_comuna         @relation(fields: [comuna_id], references: [id], onDelete: Cascade)
+  guias          log_guia_despacho[]
+  ots            log_ot_picking[]
+
+  @@map("log_direccion")
+}
+
+model log_ot_picking {
+  id              String                  @id // ej: "OT-4091"
+  id_pedido       String                  // ej: "PED-10294"
+  id_operador     Int
+  nombre_operador String
+  estado          EstadoOT
+  fecha_creacion  DateTime                @default(now())
+
+  cliente_id      Int?
+  cliente_nombre  String?
+  cliente_rut     String?
+  direccion_id    Int?
+  direccion       log_direccion?          @relation(fields: [direccion_id], references: [id])
+
+  detalles        log_ot_picking_detalle[]
+  guias           log_guia_despacho[]
+
+  @@map("log_ot_picking")
+}
+
+model log_ot_picking_detalle {
+  id               Int            @id @default(autoincrement())
+  ot_id            String
+  id_producto      Int
+  sku              String
+  nombre_producto  String
+  cant_solicitada  Int
+  cant_recolectada Int
+  peso_unitario_kg Decimal?       @db.Decimal(10, 2)
+  largo_cm         Decimal?       @db.Decimal(10, 2)
+  alto_cm          Decimal?       @db.Decimal(10, 2)
+  ancho_cm         Decimal?       @db.Decimal(10, 2)
+
+  ot               log_ot_picking @relation(fields: [ot_id], references: [id], onDelete: Cascade)
+
+  @@map("log_ot_picking_detalle")
+}
+
+model log_guia_despacho {
+  id                          String                @id // ej: "GD-52341"
+  ot_id                       String
+  transportista_id            Int
+  servicio_id                 Int
+  direccion_id                Int
+  num_seguimiento             String                @unique
+  factor_volumetrico_aplicado Int
+  peso_real_total_kg          Decimal               @db.Decimal(10, 2)
+  peso_volumetrico_total_kg   Decimal               @db.Decimal(10, 2)
+  costo_envio                 Decimal               @db.Decimal(10, 2)
+  estado_actual               String
+  fecha_emision               DateTime              @default(now())
+
+  ot                          log_ot_picking        @relation(fields: [ot_id], references: [id])
+  transportista               log_transportista     @relation(fields: [transportista_id], references: [id])
+  servicio                    log_servicio          @relation(fields: [servicio_id], references: [id])
+  direccion                   log_direccion         @relation(fields: [direccion_id], references: [id])
+  bultos                      log_bulto[]
+  eventos                     log_evento_tracking[]
+
+  @@map("log_guia_despacho")
+}
+
+model log_bulto {
+  id                  Int               @id @default(autoincrement())
+  guia_id             String
+  largo_cm            Decimal           @db.Decimal(10, 2)
+  alto_cm             Decimal           @db.Decimal(10, 2)
+  ancho_cm            Decimal           @db.Decimal(10, 2)
+  peso_real_kg        Decimal           @db.Decimal(10, 2)
+  peso_volumetrico_kg Decimal           @db.Decimal(10, 2)
+
+  guia                log_guia_despacho @relation(fields: [guia_id], references: [id], onDelete: Cascade)
+
+  @@map("log_bulto")
+}
+
+model log_evento_tracking {
+  id                 Int               @id @default(autoincrement())
+  guia_id            String
+  estado             String
+  fecha_hora         DateTime          @default(now())
+  usuario_responsable String
+  observacion        String
+
+  guia               log_guia_despacho @relation(fields: [guia_id], references: [id], onDelete: Cascade)
+
+  @@map("log_evento_tracking")
+}
+
+model inv_mov {
+  id               Int      @id @default(autoincrement())
+  id_producto      Int
+  tipo             String   @default("SALIDA")
+  cantidad         Int
+  referencia_origen String
+  fecha            DateTime @default(now())
+
+  @@map("inv_mov")
+}
