@@ -1,0 +1,330 @@
+========================================================================================
+LESGO ERP - MÓDULO DE LOGÍSTICA Y TRANSPORTE (SETS LEGO)
+PRODUCT BACKLOG COMPLETO PARA JIRA (SPRINT 1, SPRINT 2 MVP Y SPRINT 3)
+========================================================================================
+
+PROYECTO: LesGo ERP (LES)
+COMPONENTE: Logística y Transporte
+GRUPO: 6 - Sistemas de Información II (UCN)
+RESPONSABLE: M. Pizarro (Coordinador de Despacho)
+
+----------------------------------------------------------------------------------------
+ESTRUCTURA DEL BACKLOG EN JIRA:
+- 5 Épicas (Epics)
+- 9 Historias de Usuario (User Stories) con Criterios de Aceptación (Gherkin / Given-When-Then)
+- 26 Tareas Técnicas / Subtareas (Sub-tasks)
+- Estimación en Puntos de Historia (Story Points) y Prioridades
+----------------------------------------------------------------------------------------
+
+========================================================================================
+ÉPICA 1: [LES-EP01] Recolección y preparación de pedidos (Picking Almacén)
+========================================================================================
+Objetivo: Convertir un pedido confirmado de sets LEGO en una orden de trabajo (OT) ejecutable en bodega y asegurar el control de recolección física.
+Sprint: Sprint 1 / Sprint 2
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU01] Consulta de pedidos confirmados y órdenes pendientes de despacho
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: High
+  Story Points: 3
+  Épica: LES-EP01
+  Descripción:
+    Como Coordinador de Despacho,
+    Quiero consultar el listado de pedidos confirmados por Ventas con sus órdenes de recolección asociadas,
+    Para identificar y priorizar los envíos pendientes según su urgencia y destino.
+
+  Criterios de Aceptación:
+    - Escenario 1: Listado de órdenes de trabajo disponibles
+      Dado que existen órdenes de picking registradas en el sistema,
+      Cuando el coordinador accede a la pantalla de emisión de despacho,
+      Entonces el sistema presenta el selector con el ID de OT, ID de Pedido, Nombre del Cliente y estado de recolección.
+    - Escenario 2: Identificación visual del estado de recolección
+      Dado que la OT puede tener diferentes estados de preparación,
+      Cuando se visualiza la orden,
+      Entonces debe mostrar un badge cromático distintivo:
+        * CERRADO: Color verde (Listo para despacho)
+        * PENDIENTE: Color amarillo (Sin recolección)
+        * PARCIAL: Color rojo (Recolección incompleta)
+        * EN PROCESO: Color azul (Operador en bodega)
+
+  Subtareas Técnicas:
+    - [LES-TS01] Crear endpoint REST 'GET /api/logistica/pedidos-pendientes' con relaciones de cliente y dirección.
+    - [LES-TS02] Diseñar componente selector interactivo en React con badges de criticidad.
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU02] Consulta del detalle de la OT y empaque sugerido de sets LEGO
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: High
+  Story Points: 5
+  Épica: LES-EP01
+  Descripción:
+    Como Coordinador de Despacho,
+    Quiero consultar las líneas de productos LEGO asignados a la OT y las dimensiones sugeridas del paquete,
+    Para preparar el empaque y embalaje idóneo según el volumen de las cajas LEGO (UCS, Icons, etc.).
+
+  Criterios de Aceptación:
+    - Escenario 1: Desglose de sets LEGO por orden
+      Dado que se selecciona una OT válida (ej: OT-4091),
+      Cuando se consulta su detalle,
+      Entonces se muestra el SKU, nombre del set LEGO (ej: 'Millennium Falcon 75192'), cantidad solicitada y peso unitario.
+    - Escenario 2: Cálculo de empaque y medidas sugeridas
+      Dado el inventario de dimensiones de cada set en la orden,
+      Cuando el sistema carga la orden,
+      Entonces propone automáticamente un Largo, Alto, Ancho y Peso estimado inicial en el formulario de cubicación.
+
+  Subtareas Técnicas:
+    - [LES-TS03] Implementar 'GET /api/logistica/ots/:id' con cálculo de max(largo), max(alto), max(ancho) y suma de pesos.
+    - [LES-TS04] Diseñar tarjetas de visualización de sets LEGO con ícono de ladrillo en frontend.
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU03] Registro y control de cantidades efectivamente recolectadas
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: Medium
+  Story Points: 5
+  Épica: LES-EP01
+  Descripción:
+    Como Operador de Bodega,
+    Quiero registrar las cantidades recolectadas de cada producto en la OT,
+    Para asegurar que no se despachen productos faltantes ni se excedan las unidades autorizadas en el pedido.
+
+  Criterios de Aceptación:
+    - Escenario 1: Validación de cantidad no superable
+      Dado que un pedido solicita 2 unidades de un set LEGO,
+      Cuando el operador intenta ingresar 3 unidades recolectadas,
+      Entonces el sistema rechaza el valor e impide superar la cantidad solicitada.
+    - Escenario 2: Marcado de orden parcial
+      Dado que no hay existencias completas en bodega y la cantidad recolectada es menor a la solicitada,
+      Cuando se finaliza la recolección,
+      Entonces la OT se clasifica automáticamente con estado 'PARCIAL'.
+
+
+========================================================================================
+ÉPICA 2: [LES-EP02] Despacho, cubicación y emisión de guías
+========================================================================================
+Objetivo: Determinar la base de tarificación volumétrica, validar la cobertura y emitir formalmente la Guía de Despacho rebajando el inventario.
+Sprint: Sprint 2 (Desarrollo Inicial MVP)
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU04] Cubicación volumétrica interactiva en tiempo real y cotización
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: Highest
+  Story Points: 8
+  Épica: LES-EP02
+  Descripción:
+    Como Coordinador de Despacho,
+    Quiero ingresar las medidas de los bultos (Largo, Alto, Ancho y Peso Real) y previsualizar en vivo el peso volumétrico y el peso cobrado,
+    Para calcular con precisión el costo de envío antes de emitir la orden hacia la empresa transportista.
+
+  Criterios de Aceptación:
+    - Escenario 1: Cálculo en vivo del peso volumétrico
+      Dado que el operador ingresa Largo=53cm, Alto=46cm, Ancho=38cm y transportista con factor 5000,
+      Cuando modifica cualquier input,
+      Entonces el sistema calcula en tiempo real: Peso Volumétrico = (53 * 46 * 38) / 5000 = 18.53 kg.
+    - Escenario 2: Determinación del peso a cobrar
+      Dado un Peso Real de 13.20 kg y un Peso Volumétrico de 18.53 kg,
+      Cuando se evalúa la tarifa,
+      Entonces el sistema determina el Peso Cobrado como 18.53 kg y resalta con una estrella (★) el factor dominante.
+    - Escenario 3: Validación de medidas estrictamente mayores a cero
+      Dado que se ingresa un valor de dimensión o peso igual o menor a 0,
+      Cuando se evalúa el formulario,
+      Entonces el sistema bloquea la acción con error HTTP 400: 'El peso real y las dimensiones deben ser mayores a 0'.
+
+  Subtareas Técnicas:
+    - [LES-TS05] Desarrollar módulo de lógica pura de dominio en 'server/src/domain/cubicacion.ts'.
+    - [LES-TS06] Construir panel de cálculo interactivo en React ('EmisionGuia.tsx') con reactividad en tiempo real.
+    - [LES-TS07] Implementar endpoint 'POST /api/logistica/cotizar' para validación de cobertura y tarifas.
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU05] Emisión transaccional de Guía de Despacho y egreso de inventario
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: Highest
+  Story Points: 8
+  Épica: LES-EP02
+  Descripción:
+    Como Coordinador de Despacho,
+    Quiero emitir la Guía de Despacho para una OT cerrada y con cobertura válida,
+    Para generar el número de seguimiento oficial, registrar el bulto, congelar la tarifa y rebajar las existencias de 'inv_mov'.
+
+  Criterios de Aceptación:
+    - Escenario 1: Bloqueo estricto si la OT no está cerrada (Validación 1)
+      Dado que la OT seleccionada tiene estado 'PENDIENTE' o 'PARCIAL',
+      Cuando se intenta emitir la guía,
+      Entonces el frontend deshabilita el botón de emisión y el backend responde HTTP 422:
+      'No se puede emitir guía: la OT no se encuentra en estado CERRADO'.
+    - Escenario 2: Bloqueo si la comuna no tiene cobertura activa (Validación 2)
+      Dado que el cliente reside en una comuna sin cobertura vigente para el servicio (ej: Andacollo),
+      Cuando se intenta emitir la guía,
+      Entonces el sistema responde HTTP 422:
+      'El servicio seleccionado no cuenta con cobertura vigente en la comuna de destino'.
+    - Escenario 3: Transaccionalidad atómica completa
+      Dado que la OT está en estado 'CERRADO' y posee cobertura vigente,
+      Cuando el coordinador presiona 'Emitir guía y rebajar inventario',
+      Entonces en una sola transacción Prisma ($transaction) se ejecutan:
+        1. Inserción de 'log_guia_despacho' (con num_seguimiento único, ej: CHX-2026-XXXXXX).
+        2. Inserción de 'log_bulto' con dimensiones y peso facturable.
+        3. Inserción en 'log_evento_tracking' con estado inicial 'Preparado'.
+        4. Inserción en 'inv_mov' con tipo 'SALIDA' por cada producto despachado.
+    - Escenario 4: Modal de confirmación y redirección
+      Dado que la emisión es exitosa,
+      Cuando el servidor responde HTTP 201,
+      Entonces se muestra el modal con el código de seguimiento copiable y botón de navegación directa hacia el tracking.
+
+  Subtareas Técnicas:
+    - [LES-TS08] Implementar servicio transaccional 'emitirGuia' en 'server/src/services/logistica.service.ts'.
+    - [LES-TS09] Integrar transacción Prisma atómica en 'server/src/repositories/logistica.repository.ts'.
+    - [LES-TS10] Construir componente 'ModalConfirmacion.tsx' con copiado al portapapeles.
+
+
+========================================================================================
+ÉPICA 3: [LES-EP03] Recepción de mercadería y compras
+========================================================================================
+Objetivo: Contrastar la mercadería recibida desde proveedores contra la orden de compra y formalizar el ingreso en almacén.
+Sprint: Sprint 3
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU06] Recepción física de orden de compra y registro de entradas
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: Medium
+  Story Points: 5
+  Épica: LES-EP03
+  Descripción:
+    Como Operador de Bodega,
+    Quiero contrastar los sets LEGO recibidos contra la orden de compra emitida a proveedores (LEGO Group),
+    Para verificar que no existan cajas aplastadas o piezas rotas y registrar el movimiento de tipo 'ENTRADA' en inventario.
+
+  Criterios de Aceptación:
+    - Escenario 1: Recepción conforme de mercadería
+      Dado un pedido a proveedor recibido en muelle de descarga,
+      Cuando el operador verifica que las cantidades coinciden al 100%,
+      Entonces se genera un registro en 'inv_mov' con tipo 'ENTRADA'.
+    - Escenario 2: Registro de productos con daño cosmético
+      Dado que una caja de set LEGO presenta golpes o sellos vulnerados,
+      Cuando se realiza el chequeo,
+      Entonces se permite clasificar la unidad como 'DAÑADA' o derivar a reembalaje.
+
+
+========================================================================================
+ÉPICA 4: [LES-EP04] Trazabilidad y consola de seguimiento de envíos (Tracking)
+========================================================================================
+Objetivo: Mantener la trazabilidad visible de cada paquete despachado y alimentar la bitácora cronológica con control de estados.
+Sprint: Sprint 2 (Desarrollo Inicial MVP)
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU07] Consola de seguimiento de despachos con filtros dinámicos
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: Highest
+  Story Points: 5
+  Épica: LES-EP04
+  Descripción:
+    Como Coordinador de Despacho o Encargado de Atención al Cliente,
+    Quiero consultar la lista de guías emitidas y filtrarlas por texto, transportista, estado y fecha,
+    Para responder rápidamente sobre la ubicación y situación de cualquier pedido LEGO.
+
+  Criterios de Aceptación:
+    - Escenario 1: Filtrado reactivo en la barra superior
+      Dado que existen guías emitidas en la base de datos,
+      Cuando el usuario ingresa un texto de búsqueda, elige transportista (ej: 'Chilexpress'), estado ('En tránsito') o fecha,
+      Entonces la tabla actualiza inmediatamente los registros coincidentes.
+    - Escenario 2: Badge de criticidad por estado
+      Dado el listado principal de guías,
+      Cuando se despliega la tabla,
+      Entonces cada fila exhibe su estado actual con color distintivo:
+        * 'Entregado conforme': Verde esmeralda con check
+        * 'Entrega Fallida': Rojo alerta
+        * 'En tránsito': Celeste con ícono de camión
+        * 'Despachado': Índigo con ícono de paquete
+        * 'Preparado': Ámbar
+
+  Subtareas Técnicas:
+    - [LES-TS11] Endpoint 'GET /api/logistica/tracking' con soporte de query params (?estado=&transportista=&fecha=&busqueda=).
+    - [LES-TS12] Tabla responsiva con filtros en vivo y debounce de búsqueda en 'ConsolaTracking.tsx'.
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU08] Panel Split-View con línea de tiempo vertical y registro de eventos
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: Highest
+  Story Points: 5
+  Épica: LES-EP04
+  Descripción:
+    Como Coordinador de Despacho,
+    Quiero hacer clic en cualquier guía para abrir el panel lateral con la bitácora histórica y registrar un nuevo evento append-only,
+    Para actualizar el hito de transporte e informar si el paquete fue entregado o sufrió un intento fallido.
+
+  Criterios de Aceptación:
+    - Escenario 1: Despliegue de Split-View y timeline vertical
+      Dado que el usuario hace clic en una fila de la tabla,
+      Cuando se abre el panel lateral,
+      Entonces se visualiza el timeline vertical con todos los eventos ordenados cronológicamente (fecha, hora, estado, operador y comentarios).
+    - Escenario 2: Inserción de nuevo evento append-only
+      Dado que el paquete cambia de situación (ej: de 'Despachado' a 'En tránsito' o 'Entrega Fallida'),
+      Cuando el usuario selecciona el nuevo estado, redacta la observación y presiona 'Registrar evento en bitácora',
+      Entonces el sistema inserta un nuevo registro en 'log_evento_tracking' sin borrar los anteriores.
+    - Escenario 3: Actualización del estado denormalizado
+      Dado que se registra un nuevo evento,
+      Cuando la transacción finaliza,
+      Entonces el campo 'estado_actual' de 'log_guia_despacho' se actualiza automáticamente y se refresca la vista en tiempo real.
+
+  Subtareas Técnicas:
+    - [LES-TS13] Endpoint 'POST /api/logistica/tracking/:id_guia/evento'.
+    - [LES-TS14] Componente timeline vertical en React con nodos de estado y timestamp.
+    - [LES-TS15] Formulario append-only con refresco en vivo del panel y de la tabla principal.
+
+
+========================================================================================
+ÉPICA 5: [LES-EP05] Administración de maestros logísticos y seguridad
+========================================================================================
+Objetivo: Sostener la operativa mediante la configuración de transportistas, servicios, coberturas comunales, tarifas y control de perfiles.
+Sprint: Sprint 1 / Sprint 2
+
+  --------------------------------------------------------------------------------------
+  HISTORIA: [LES-HU09] Configuración y mantención de transportistas, coberturas y tarifas
+  --------------------------------------------------------------------------------------
+  Tipo: Story
+  Prioridad: Medium
+  Story Points: 5
+  Épica: LES-EP05
+  Descripción:
+    Como Administrador del ERP,
+    Quiero parametrizar las empresas de transporte, sus factores volumétricos (4000/5000), coberturas comunales y tablas de tarifas,
+    Para garantizar que las cotizaciones y despachos cumplan con los convenios comerciales vigentes.
+
+  Criterios de Aceptación:
+    - Escenario 1: Factores volumétricos diferenciados
+      Dado que Starken utiliza factor 4000 y Chilexpress factor 5000,
+      Cuando se selecciona cada transportista en el sistema,
+      Entonces el cálculo de cubicación adopta automáticamente el factor correspondiente configurado en 'log_transportista'.
+    - Escenario 2: Control de vigencia temporal de coberturas
+      Dado que una comuna tiene cobertura vencida en fecha (vigencia_hasta < hoy),
+      Cuando se intenta cotizar o emitir,
+      Entonces el sistema la reconoce como no vigente e impide la generación de la guía.
+
+  Subtareas Técnicas:
+    - [LES-TS16] Modelado Prisma con restricciones de clave única, relaciones y tipos Decimal.
+    - [LES-TS17] Script de seed con 10 transportistas, 11 servicios, 12 comunas y 14 coberturas vigentes/no vigentes.
+
+========================================================================================
+RESUMEN DE ESTIMACIONES PARA JIRA (SPRINT PLANNING)
+========================================================================================
+| ID Historia | Título Corto                           | Épica    | Tipo  | Prioridad | Puntos | Sprint   |
+|-------------|----------------------------------------|----------|-------|-----------|--------|----------|
+| LES-HU01    | Pedidos pendientes y estado picking    | LES-EP01 | Story | High      | 3 SP   | Sprint 2 |
+| LES-HU02    | Detalle de OT y empaque sugerido       | LES-EP01 | Story | High      | 5 SP   | Sprint 2 |
+| LES-HU03    | Control de recolección física          | LES-EP01 | Story | Medium    | 5 SP   | Sprint 1 |
+| LES-HU04    | Cubicación interactiva y cotización    | LES-EP02 | Story | Highest   | 8 SP   | Sprint 2 |
+| LES-HU05    | Emisión transaccional y rebaja invent. | LES-EP02 | Story | Highest   | 8 SP   | Sprint 2 |
+| LES-HU06    | Recepción de órdenes de compra         | LES-EP03 | Story | Medium    | 5 SP   | Sprint 3 |
+| LES-HU07    | Consola de tracking y filtros          | LES-EP04 | Story | Highest   | 5 SP   | Sprint 2 |
+| LES-HU08    | Timeline vertical y eventos bitácora   | LES-EP04 | Story | Highest   | 5 SP   | Sprint 2 |
+| LES-HU09    | Maestros, tarifas y coberturas         | LES-EP05 | Story | Medium    | 5 SP   | Sprint 2 |
+----------------------------------------------------------------------------------------
+TOTAL HISTORIAS SPRINT 2 (MVP ENTREGADO): 34 Story Points
+ESTADO DE IMPLEMENTACIÓN: 100% FUNCIONAL Y VERIFICADO
+========================================================================================
