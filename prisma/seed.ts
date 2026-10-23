@@ -1,9 +1,12 @@
 import { PrismaClient, EstadoOT } from '@prisma/client';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const prisma = new PrismaClient();
 
 export async function main() {
-  console.log('🌱 Iniciando seed de Base de Datos para LesGo ERP (Logística y Transporte)...');
+  console.log('🌱 Iniciando seed de Base de Datos para LesGo ERP (Esquema: logistica)...');
 
   // Limpiar tablas previas en orden de dependencias
   await prisma.inv_mov.deleteMany({});
@@ -688,7 +691,28 @@ export async function main() {
     await prisma.inv_mov.create({ data: m });
   }
 
-  console.log('✅ Seed completado exitosamente con más de 10 registros por tabla.');
+  // Sincronizar secuencias autoincrementales en el esquema logistica tras inserción de IDs explícitos
+  const tablasConSecuencia = [
+    'log_region',
+    'log_comuna',
+    'log_transportista',
+    'log_servicio',
+    'log_cobertura',
+    'log_tarifa',
+    'log_direccion',
+    'log_ot_picking_detalle',
+    'log_bulto',
+    'log_evento_tracking',
+    'inv_mov',
+  ];
+
+  for (const tabla of tablasConSecuencia) {
+    await prisma.$executeRawUnsafe(
+      `SELECT setval(pg_get_serial_sequence('logistica.${tabla}', 'id'), COALESCE((SELECT MAX(id) FROM logistica.${tabla}), 1), true);`
+    );
+  }
+
+  console.log('✅ Seed completado exitosamente en esquema "logistica" con más de 10 registros por tabla.');
 }
 
 if (require.main === module) {

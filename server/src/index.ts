@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { createLogisticaRouter } from './routes/logistica.routes.js';
 import { checkDatabaseConnection } from './lib/prisma.js';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,8 +36,9 @@ app.get('/api/health', async (req, res) => {
   res.json({
     status: 'ok',
     module: 'LesGo ERP - Módulo Logística y Transporte',
+    schema: 'logistica',
     timestamp: new Date().toISOString(),
-    database: dbOk ? 'conectado' : 'sin_conexion_pg',
+    database: dbOk ? 'conectado (Neon PostgreSQL - esquema logistica)' : 'sin_conexion_pg',
   });
 });
 
@@ -56,10 +59,10 @@ app.listen(PORT, async () => {
   
   const dbOk = await checkDatabaseConnection();
   if (dbOk) {
-    console.log('✅ Conexión con PostgreSQL verificada exitosamente.');
+    console.log('✅ Conexión con PostgreSQL (Neon - esquema "logistica") verificada exitosamente.');
   } else {
     console.warn('⚠️ Base de datos PostgreSQL no detectada en DATABASE_URL.');
-    console.warn('👉 Para iniciar PostgreSQL: docker compose up -d');
+    console.warn('👉 Verifica la variable DATABASE_URL en el archivo .env');
     console.warn('👉 Para migrar y poblar: npm run db:setup');
   }
 });

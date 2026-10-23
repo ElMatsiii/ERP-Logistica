@@ -68,12 +68,11 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
 
 ## 🚀 Puesta en Marcha
 
-### 1. Iniciar PostgreSQL (Docker)
-Si dispones de Docker instalado, levanta la base de datos con:
-```bash
-docker compose up -d
+### 1. Configuración de Conexión a Base de Datos (Neon PostgreSQL)
+El proyecto se conecta al servidor compartido de la asignatura en Neon PostgreSQL, aislando todas sus tablas y operaciones en el esquema **`logistica`** (`logistica.*`). Copia `.env.example` a `.env` (el archivo `.env` está en `.gitignore` y no se sube al repositorio):
+```env
+DATABASE_URL="postgresql://<USUARIO>:<PASSWORD_URL_ENCODED>@<HOST_NEON>:5432/si2_22026?schema=logistica&sslmode=require"
 ```
-*(O utiliza cualquier instancia local de PostgreSQL y configura la variable `DATABASE_URL` en `.env`)*.
 
 ### 2. Migrar y Poblar la Base de Datos
 ```bash

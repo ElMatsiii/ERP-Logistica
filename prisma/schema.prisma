@@ -1,5 +1,5 @@
 // Prisma schema for LesGo ERP - Módulo de Logística y Transporte
-// Sprint 2 - MVP
+// Sprint 2 - MVP (Esquema: logistica)
 
 generator client {
   provider = "prisma-client-js"
@@ -13,6 +13,7 @@ generator serverClient {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["logistica"]
 }
 
 enum EstadoOT {
@@ -20,6 +21,8 @@ enum EstadoOT {
   EN_PROCESO
   PARCIAL
   CERRADO
+
+  @@schema("logistica")
 }
 
 model log_transportista {
@@ -35,6 +38,7 @@ model log_transportista {
   guias                       log_guia_despacho[]
 
   @@map("log_transportista")
+  @@schema("logistica")
 }
 
 model log_servicio {
@@ -50,6 +54,7 @@ model log_servicio {
   guias                       log_guia_despacho[]
 
   @@map("log_servicio")
+  @@schema("logistica")
 }
 
 model log_region {
@@ -59,6 +64,7 @@ model log_region {
   comunas log_comuna[]
 
   @@map("log_region")
+  @@schema("logistica")
 }
 
 model log_comuna {
@@ -72,6 +78,7 @@ model log_comuna {
   direcciones log_direccion[]
 
   @@map("log_comuna")
+  @@schema("logistica")
 }
 
 model log_cobertura {
@@ -86,6 +93,7 @@ model log_cobertura {
   comuna         log_comuna   @relation(fields: [comuna_id], references: [id], onDelete: Cascade)
 
   @@map("log_cobertura")
+  @@schema("logistica")
 }
 
 model log_tarifa {
@@ -103,6 +111,7 @@ model log_tarifa {
   comuna              log_comuna   @relation(fields: [comuna_id], references: [id], onDelete: Cascade)
 
   @@map("log_tarifa")
+  @@schema("logistica")
 }
 
 model log_direccion {
@@ -122,6 +131,7 @@ model log_direccion {
   ots            log_ot_picking[]
 
   @@map("log_direccion")
+  @@schema("logistica")
 }
 
 model log_ot_picking {
@@ -142,6 +152,7 @@ model log_ot_picking {
   guias           log_guia_despacho[]
 
   @@map("log_ot_picking")
+  @@schema("logistica")
 }
 
 model log_ot_picking_detalle {
@@ -160,6 +171,7 @@ model log_ot_picking_detalle {
   ot               log_ot_picking @relation(fields: [ot_id], references: [id], onDelete: Cascade)
 
   @@map("log_ot_picking_detalle")
+  @@schema("logistica")
 }
 
 model log_guia_despacho {
@@ -184,6 +196,7 @@ model log_guia_despacho {
   eventos                     log_evento_tracking[]
 
   @@map("log_guia_despacho")
+  @@schema("logistica")
 }
 
 model log_bulto {
@@ -198,6 +211,7 @@ model log_bulto {
   guia                log_guia_despacho @relation(fields: [guia_id], references: [id], onDelete: Cascade)
 
   @@map("log_bulto")
+  @@schema("logistica")
 }
 
 model log_evento_tracking {
@@ -211,6 +225,7 @@ model log_evento_tracking {
   guia               log_guia_despacho @relation(fields: [guia_id], references: [id], onDelete: Cascade)
 
   @@map("log_evento_tracking")
+  @@schema("logistica")
 }
 
 model inv_mov {
@@ -222,4 +237,5 @@ model inv_mov {
   fecha            DateTime @default(now())
 
   @@map("inv_mov")
+  @@schema("logistica")
 }
