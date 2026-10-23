@@ -9,10 +9,11 @@
     "client": "npm --prefix client run dev",
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",
     "db:migrate": "prisma migrate dev --name init",
-    "db:push": "prisma db push",
+    "db:ddl": "tsx prisma/run-ddl.ts",
+    "db:push:local": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "npm run db:push && npm run db:seed",
+    "db:setup": "npm run db:ddl && npm run db:generate && npm run db:seed",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "build": "npm --prefix server run build && npm --prefix client run build"
