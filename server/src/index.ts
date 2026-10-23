@@ -53,16 +53,16 @@ app.use((req, res) => {
 // Iniciar servidor
 app.listen(PORT, async () => {
   console.log('======================================================');
-  console.log(`🚀 Servidor LesGo ERP (Logística) activo en: http://localhost:${PORT}`);
-  console.log(`📦 Origen permitido CORS: ${CLIENT_URL}`);
+  console.log(`[INFO] Servidor LesGo ERP (Logística) activo en: http://localhost:${PORT}`);
+  console.log(`[INFO] Origen permitido CORS: ${CLIENT_URL}`);
   console.log('======================================================');
   
   const dbOk = await checkDatabaseConnection();
   if (dbOk) {
-    console.log('✅ Conexión con PostgreSQL (Neon - esquema "logistica") verificada exitosamente.');
+    console.log('[OK] Conexión con PostgreSQL (Neon - esquema "logistica") verificada exitosamente.');
   } else {
-    console.warn('⚠️ Base de datos PostgreSQL no detectada en DATABASE_URL.');
-    console.warn('👉 Verifica la variable DATABASE_URL en el archivo .env');
-    console.warn('👉 Para migrar y poblar: npm run db:setup');
+    console.warn('[WARN] Base de datos PostgreSQL no detectada en DATABASE_URL.');
+    console.warn('[INFO] Verifica la variable DATABASE_URL en el archivo .env');
+    console.warn('[INFO] Para migrar y poblar: npm run db:setup');
   }
 });

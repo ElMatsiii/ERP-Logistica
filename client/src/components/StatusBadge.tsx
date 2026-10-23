@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check, AlertTriangle, Truck, Package, Tag } from 'lucide-react';
 import { EstadoOT } from '../types';
 
 interface StatusBadgeProps {
@@ -48,32 +49,37 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'ot' })
     case 'Entregado conforme':
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-          ✓ {status}
+          <Check className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+          <span>{status}</span>
         </span>
       );
     case 'Entrega Fallida':
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-800 border border-red-300">
-          ⚠ {status}
+          <AlertTriangle className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+          <span>{status}</span>
         </span>
       );
     case 'En tránsito':
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-sky-100 text-sky-800 border border-sky-300">
-          🚚 {status}
+          <Truck className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+          <span>{status}</span>
         </span>
       );
     case 'Despachado':
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-300">
-          📦 {status}
+          <Package className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+          <span>{status}</span>
         </span>
       );
     case 'Preparado':
     default:
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-          🏷️ {status}
+          <Tag className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+          <span>{status}</span>
         </span>
       );
   }

@@ -26,7 +26,7 @@ export async function checkDatabaseConnection(): Promise<boolean> {
     await prisma.$queryRaw`SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'logistica'`;
     return true;
   } catch (error) {
-    console.warn('⚠️ No se pudo establecer conexión con PostgreSQL (esquema logistica):', (error as Error).message);
+    console.warn('[WARN] No se pudo establecer conexión con PostgreSQL (esquema logistica):', (error as Error).message);
     return false;
   }
 }

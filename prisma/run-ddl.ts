@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const ddlPath = path.resolve(process.cwd(), 'db/ddl/001_log_tablas.sql');
-  console.log(`📄 Ejecutando DDL seguro e idempotente desde: ${ddlPath}`);
+  console.log(`[INFO] Ejecutando DDL seguro e idempotente desde: ${ddlPath}`);
 
   const rawSql = fs.readFileSync(ddlPath, 'utf-8');
   // Eliminar comentarios de línea
@@ -40,12 +40,12 @@ async function main() {
     await prisma.$executeRawUnsafe(stmt);
   }
 
-  console.log(`✅ DDL ejecutado exitosamente (${statements.length} sentencias en esquema "logistica").`);
+  console.log(`[OK] DDL ejecutado exitosamente (${statements.length} sentencias en esquema "logistica").`);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error al ejecutar DDL:', e);
+    console.error('[ERROR] Error al ejecutar DDL:', e);
     process.exit(1);
   })
   .finally(async () => {

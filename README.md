@@ -1,17 +1,17 @@
-# LesGo ERP — Módulo de Logística y Transporte 🧱🚚
+# LesGo ERP — Módulo de Logística y Transporte
 **Sprint 2: Desarrollo Inicial MVP**  
 *Asignatura: Sistemas de Información II — Universidad Católica del Norte (UCN)*  
 *Grupo 6: Maximiliano Pizarro, Máximo Sazo, Nicolás Rojas, Daniela Infante, Javier Catalán, Bastián Salinas.*
 
 ---
 
-## 🌟 Resumen del Proyecto
+## Resumen del Proyecto
 
 Este módulo implementa la solución integral de **Logística y Transporte** para el ERP de **"LesGo"** (tienda especializada en sets emblemáticos de LEGO). Cubre el ciclo completo desde la validación de órdenes de trabajo recolectadas (*picking*), cubicación volumétrica en tiempo real, selección de transportistas y emisión de Guías de Despacho transaccionales con rebaja de existencias en Inventario (`inv_mov`), hasta la consola de seguimiento y bitácora cronológica (*tracking*).
 
 ---
 
-## 🏗️ Stack Tecnológico y Arquitectura
+## Stack Tecnológico y Arquitectura
 
 - **Frontend (`client/`)**:
   - React 18 + TypeScript + Vite + Tailwind CSS.
@@ -27,12 +27,12 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
     - `src/routes/logistica.routes.ts`: Ruteo `/api/logistica/*`.
 - **Persistencia**:
   - PostgreSQL 16 + Prisma ORM.
-  - Esquema modelado con prefijo `log_*` (12 entidades) y tabla cruzada `inv_mov`.
+  - Esquema modelado con prefijo `log_*` (17 entidades) y tablas `test_log_*` (10 entidades).
   - Script de Seed `prisma/seed.ts` con más de 10 registros reales por tabla.
 
 ---
 
-## 🗄️ Modelo de Datos (13 Tablas Modeladas)
+## Modelo de Datos
 
 1. `log_transportista`: Chilexpress, Starken, Blue Express, Correos Chile, etc.
 2. `log_servicio`: Servicios prioritarios, día siguiente, estándar terrestre.
@@ -46,11 +46,11 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
 10. `log_guia_despacho`: Guías emitidas con número de seguimiento y costo.
 11. `log_bulto`: Medidas de embalaje (largo, alto, ancho, pesos).
 12. `log_evento_tracking`: Bitácora *append-only* de cambios de estado.
-13. `inv_mov`: Movimientos de egreso de inventario tipo `SALIDA`.
+13. `test_log_inv_mov` (`inv_mov`): Movimientos de egreso de inventario tipo `SALIDA`.
 
 ---
 
-## ⚙️ Reglas de Negocio Implementadas
+## Reglas de Negocio Implementadas
 
 1. **Validación de Estado OT**:
    - Solo se permite emitir guía si la orden de trabajo se encuentra estrictamente en estado `CERRADO`. Si no lo está, el frontend bloquea la acción y el backend responde `HTTP 422: "No se puede emitir guía: la OT no se encuentra en estado CERRADO"`.
@@ -66,7 +66,7 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
 
 ---
 
-## 🚀 Puesta en Marcha
+## Puesta en Marcha
 
 ### 1. Configuración de Conexión a Base de Datos (Neon PostgreSQL)
 El proyecto se conecta al servidor compartido de la asignatura en Neon PostgreSQL, aislando todas sus tablas y operaciones en el esquema **`logistica`** (`logistica.*`). Copia `.env.example` a `.env` (el archivo `.env` está en `.gitignore` y no se sube al repositorio):
@@ -76,11 +76,8 @@ DATABASE_URL="postgresql://<USUARIO>:<PASSWORD_URL_ENCODED>@<HOST_NEON>:5432/si2
 
 ### 2. Migrar y Poblar la Base de Datos
 ```bash
-# Generar cliente Prisma y empujar esquema
-npm run db:push
-
-# Ejecutar el seed con más de 10 registros por tabla
-npm run db:seed
+# Ejecutar DDL, generar cliente Prisma y poblar datos iniciales
+npm run db:setup
 ```
 
 ### 3. Ejecutar la Aplicación en Modo Desarrollo
@@ -93,7 +90,7 @@ Abre en tu navegador: **`http://localhost:5173`**
 
 ---
 
-## 📋 Endpoints de la API REST (`/api/logistica`)
+## Endpoints de la API REST (`/api/logistica`)
 
 | Método | Endpoint | Descripción |
 |---|---|---|

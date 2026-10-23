@@ -6,7 +6,7 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 export async function main() {
-  console.log('🌱 Iniciando seed de Base de Datos para LesGo ERP (Esquema: logistica)...');
+  console.log('[INFO] Iniciando seed de Base de Datos para LesGo ERP (Esquema: logistica)...');
 
   // Limpiar tablas previas en orden de dependencias
   await prisma.comprasOcDetalle.deleteMany({});
@@ -38,7 +38,7 @@ export async function main() {
   await prisma.log_transportista.deleteMany({});
 
   // 1. REGIONES (10 registros)
-  console.log('📌 Insertando regiones...');
+  console.log('[INFO] Insertando regiones...');
   const regionesData = [
     { id: 1, nombre: 'Arica y Parinacota' },
     { id: 2, nombre: 'Tarapacá' },
@@ -57,7 +57,7 @@ export async function main() {
   }
 
   // 2. COMUNAS (12 registros - IV Región y RM)
-  console.log('📌 Insertando comunas...');
+  console.log('[INFO] Insertando comunas...');
   const comunasData = [
     // IV Región (id: 5)
     { id: 101, region_id: 5, nombre: 'La Serena' },
@@ -80,7 +80,7 @@ export async function main() {
   }
 
   // 3. TRANSPORTISTAS (10 registros)
-  console.log('📌 Insertando transportistas...');
+  console.log('[INFO] Insertando transportistas...');
   const transportistasData = [
     {
       id: 1,
@@ -179,7 +179,7 @@ export async function main() {
   }
 
   // 4. SERVICIOS (11 registros)
-  console.log('📌 Insertando servicios de transportistas...');
+  console.log('[INFO] Insertando servicios de transportistas...');
   const serviciosData = [
     { id: 1, transportista_id: 1, nombre: 'Chilexpress Prioritario (24h)', dias_transito_comprometidos: 1, activo: true },
     { id: 2, transportista_id: 1, nombre: 'Chilexpress Día Hábil Siguiente', dias_transito_comprometidos: 1, activo: true },
@@ -199,7 +199,7 @@ export async function main() {
   }
 
   // 5. COBERTURAS (12 registros - con y sin cobertura para validar)
-  console.log('📌 Insertando coberturas...');
+  console.log('[INFO] Insertando coberturas...');
   const hoy = new Date();
   const unAnoMas = new Date(hoy.getFullYear() + 1, hoy.getMonth(), hoy.getDate());
   const haceUnMes = new Date(hoy.getFullYear(), hoy.getMonth() - 1, hoy.getDate());
@@ -231,7 +231,7 @@ export async function main() {
   }
 
   // 6. TARIFAS (12 registros)
-  console.log('📌 Insertando tarifas...');
+  console.log('[INFO] Insertando tarifas...');
   const tarifasData = [
     { id: 1, servicio_id: 1, comuna_id: 101, peso_desde_kg: 0.0, peso_hasta_kg: 3.0, precio_base: 4500, precio_kg_adicional: 1200, vigencia_desde: haceUnMes, vigencia_hasta: unAnoMas },
     { id: 2, servicio_id: 1, comuna_id: 102, peso_desde_kg: 0.0, peso_hasta_kg: 3.0, precio_base: 4700, precio_kg_adicional: 1200, vigencia_desde: haceUnMes, vigencia_hasta: unAnoMas },
@@ -252,7 +252,7 @@ export async function main() {
   }
 
   // 7. DIRECCIONES DE CLIENTES (11 registros)
-  console.log('📌 Insertando direcciones de clientes...');
+  console.log('[INFO] Insertando direcciones de clientes...');
   const direccionesData = [
     { id: 1, cliente_id: 1001, cliente_nombre: 'Martín Almeyda', cliente_rut: '17.291.844-3', comuna_id: 101, calle: 'Av. Cuatro Esquinas', numero: '1420', depto: 'Torre B, Depto 402', referencia: 'Cerca del Mall Plaza La Serena', activa: true },
     { id: 2, cliente_id: 1002, cliente_nombre: 'Constanza Valenzuela', cliente_rut: '18.452.910-1', comuna_id: 102, calle: 'Calle Baquedano', numero: '550', depto: null, referencia: 'Frente a Plaza de Armas de Coquimbo', activa: true },
@@ -273,7 +273,7 @@ export async function main() {
   }
 
   // 8. ÓRDENES DE TRABAJO (OT PICKING) (12 registros con variados estados)
-  console.log('📌 Insertando órdenes de trabajo de picking (OT)...');
+  console.log('[INFO] Insertando órdenes de trabajo de picking (OT)...');
   const otsData = [
     {
       id: 'OT-4091',
@@ -427,7 +427,7 @@ export async function main() {
   }
 
   // 9. DETALLE OT PICKING (Catálogo de sets LEGO emblemáticos - 14 registros)
-  console.log('📌 Insertando detalle de productos LEGO en órdenes de trabajo...');
+  console.log('[INFO] Insertando detalle de productos LEGO en órdenes de trabajo...');
   const detallesData = [
     // OT-4091: Millennium Falcon (UCS)
     { id: 1, ot_id: 'OT-4091', id_producto: 75192, sku: 'LEGO-SW-75192', nombre_producto: 'LEGO Star Wars Millennium Falcon UCS', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 13.2, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
@@ -462,7 +462,7 @@ export async function main() {
   }
 
   // 10. GUÍAS DE DESPACHO (10 registros emitidos previamente con histórico)
-  console.log('📌 Insertando guías de despacho emitidas...');
+  console.log('[INFO] Insertando guías de despacho emitidas...');
   const guiasData = [
     {
       id: 'GD-52301',
@@ -611,7 +611,7 @@ export async function main() {
   }
 
   // 11. BULTOS (12 registros)
-  console.log('📌 Insertando bultos para las guías...');
+  console.log('[INFO] Insertando bultos para las guías...');
   const bultosData = [
     { id: 1, guia_id: 'GD-52301', largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0, peso_real_kg: 13.2, peso_volumetrico_kg: 18.53 },
     { id: 2, guia_id: 'GD-52302', largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 18.0, peso_real_kg: 4.9, peso_volumetrico_kg: 7.45 },
@@ -630,7 +630,7 @@ export async function main() {
   }
 
   // 12. EVENTOS DE TRACKING (Bitácora de solo inserción - >25 registros cronológicos)
-  console.log('📌 Insertando bitácora de eventos de tracking...');
+  console.log('[INFO] Insertando bitácora de eventos de tracking...');
   const eventosData = [
     // GD-52301 (Entregado conforme)
     { guia_id: 'GD-52301', estado: 'Preparado', fecha_hora: new Date(Date.now() - 3600000 * 24 * 4), usuario_responsable: 'M. Pizarro', observacion: 'Bulto embalado y etiquetado con sello de seguridad LEGO' },
@@ -685,7 +685,7 @@ export async function main() {
   }
 
   // 13. MOVIMIENTOS DE INVENTARIO (inv_mov) (12 registros de salida por despacho)
-  console.log('📌 Insertando movimientos de inventario...');
+  console.log('[INFO] Insertando movimientos de inventario...');
   const invMovsData = [
     { id_producto: 75192, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52301 / OT-4091', fecha: new Date(Date.now() - 3600000 * 24 * 4) },
     { id_producto: 75288, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date(Date.now() - 3600000 * 24 * 3.5) },
@@ -706,7 +706,7 @@ export async function main() {
   }
 
   // 14. ESTADOS DE ENVÍO (log_estado_envio) (10 registros)
-  console.log('📌 Insertando catálogo de estados de envío...');
+  console.log('[INFO] Insertando catálogo de estados de envío...');
   const estadosEnvioData = [
     { id: 1, codigo: 'PREPARADO', nombre: 'Preparado', orden_flujo: 1, es_terminal: false },
     { id: 2, codigo: 'ASIGNADO', nombre: 'Asignado', orden_flujo: 2, es_terminal: false },
@@ -724,7 +724,7 @@ export async function main() {
   }
 
   // 15. DETALLE DE BULTOS (log_bulto_detalle) (10 registros)
-  console.log('📌 Insertando detalle de bultos...');
+  console.log('[INFO] Insertando detalle de bultos...');
   const bultosDetalleData = [
     { id: 1, bulto_id: 1, ot_detalle_id: 1, cantidad: 1 },
     { id: 2, bulto_id: 2, ot_detalle_id: 2, cantidad: 1 },
@@ -743,7 +743,7 @@ export async function main() {
   }
 
   // 16. INCIDENCIAS DE DESPACHO (log_incidencia) (10 registros)
-  console.log('📌 Insertando incidencias de transporte...');
+  console.log('[INFO] Insertando incidencias de transporte...');
   const incidenciasData = [
     { id: 1, guia_id: 'GD-52302', tipo: 'DOMICILIO_CERRADO', descripcion: 'Primer intento fallido: Domicilio cerrado sin moradores en Coquimbo', id_caso_postventa: 5001, resuelta: false },
     { id: 2, guia_id: 'GD-52303', tipo: 'RETRASO_RUTA', descripcion: 'Demora en ruta C-41 hacia Vicuña por controles viales', id_caso_postventa: null, resuelta: true },
@@ -761,7 +761,7 @@ export async function main() {
   }
 
   // 17. RECEPCIONES DE ÓRDENES DE COMPRA (log_recepcion y log_recepcion_detalle) (10 registros c/u)
-  console.log('📌 Insertando recepciones de órdenes de compra y su detalle...');
+  console.log('[INFO] Insertando recepciones de órdenes de compra y su detalle...');
   const recepcionesData = [
     { id: 1, id_oc: 8001, id_empleado_receptor: 301, estado: 'CONFORME', observacion: 'Recepción completa lote Star Wars UCS sin daños' },
     { id: 2, id_oc: 8002, id_empleado_receptor: 302, estado: 'CON_OBSERVACIONES', observacion: '1 caja con abolladura leve en esquina' },
@@ -797,7 +797,7 @@ export async function main() {
   // ==========================================================================
   // 18. TABLAS DE PRUEBA DE MÓDULOS VECINOS (Sección 9.2 - 10 tablas test_log_*)
   // ==========================================================================
-  console.log('📌 Insertando datos de prueba en las 10 tablas test_log_*...');
+  console.log('[INFO] Insertando datos de prueba en las 10 tablas test_log_*...');
 
   const testClientes = [
     { id_cliente: 1001, nombre: 'Martín Almeyda', rut: '17.291.844-3', email: 'm.almeyda@cliente.cl' },
@@ -985,13 +985,13 @@ export async function main() {
     );
   }
 
-  console.log('✅ Seed completado exitosamente en esquema "logistica" (27 tablas pobladas: 17 log_* y 10 test_log_* con >= 10 registros c/u).');
+  console.log('[OK] Seed completado exitosamente en esquema "logistica" (27 tablas pobladas: 17 log_* y 10 test_log_* con >= 10 registros c/u).');
 }
 
 if (require.main === module) {
   main()
     .catch((e) => {
-      console.error('❌ Error durante seed:', e);
+      console.error('[ERROR] Error durante seed:', e);
       process.exit(1);
     })
     .finally(async () => {

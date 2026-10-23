@@ -4,6 +4,8 @@ import {
   Truck,
   AlertTriangle,
   CheckCircle,
+  XCircle,
+  Star,
   HelpCircle,
   Calculator,
   MapPin,
@@ -408,7 +410,19 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                     className="flex items-center space-x-2.5 p-2 rounded-lg bg-white border border-slate-200 text-xs shadow-2xs"
                   >
                     <div className="w-7 h-7 rounded bg-[#ffcf00]/30 border border-[#ffcf00] flex items-center justify-center font-bold text-amber-800 flex-shrink-0">
-                      🧱
+                      <svg
+                        className="w-4 h-4 text-amber-800"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="3" y="8" width="18" height="12" rx="2" />
+                        <path d="M7 8V6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
+                        <path d="M13 8V6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
+                      </svg>
                     </div>
                     <div className="truncate flex-1">
                       <p className="font-bold text-slate-800 truncate">{prod.nombre_producto}</p>
@@ -554,8 +568,9 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                     {dimensiones.peso_real_kg} <span className="text-xs text-slate-400">kg</span>
                   </p>
                   {!pesoMayorEsVolumetrico && (
-                    <span className="text-[10px] text-emerald-400 font-bold block mt-0.5">
-                      ★ Mayor (Cobrado)
+                    <span className="text-[10px] text-emerald-400 font-bold flex items-center mt-0.5">
+                      <Star className="w-3 h-3 mr-1 fill-current" />
+                      <span>Mayor (Cobrado)</span>
                     </span>
                   )}
                 </div>
@@ -568,8 +583,9 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                     {pesoVolumetrico} <span className="text-xs text-slate-400">kg</span>
                   </p>
                   {pesoMayorEsVolumetrico && (
-                    <span className="text-[10px] text-amber-400 font-bold block mt-0.5">
-                      ★ Mayor (Cobrado)
+                    <span className="text-[10px] text-amber-400 font-bold flex items-center mt-0.5">
+                      <Star className="w-3 h-3 mr-1 fill-current" />
+                      <span>Mayor (Cobrado)</span>
                     </span>
                   )}
                 </div>
@@ -658,11 +674,13 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                 <div className="flex items-center space-x-2 mt-1">
                   {tieneCobertura ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">
-                      ✓ Cobertura Vigente en {comunaDestino || 'Comuna'}
+                      <CheckCircle className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+                      <span>Cobertura Vigente en {comunaDestino || 'Comuna'}</span>
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800">
-                      ✕ Sin Cobertura en {comunaDestino || 'Comuna'}
+                      <XCircle className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+                      <span>Sin Cobertura en {comunaDestino || 'Comuna'}</span>
                     </span>
                   )}
                 </div>
