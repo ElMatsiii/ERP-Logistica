@@ -9,6 +9,20 @@ export async function main() {
   console.log('🌱 Iniciando seed de Base de Datos para LesGo ERP (Esquema: logistica)...');
 
   // Limpiar tablas previas en orden de dependencias
+  await prisma.comprasOcDetalle.deleteMany({});
+  await prisma.comprasOc.deleteMany({});
+  await prisma.rrhhUsuario.deleteMany({});
+  await prisma.rrhhRol.deleteMany({});
+  await prisma.rrhhEmpleado.deleteMany({});
+  await prisma.invProducto.deleteMany({});
+  await prisma.ventasPedidoDetalle.deleteMany({});
+  await prisma.ventasPedido.deleteMany({});
+  await prisma.ventasCliente.deleteMany({});
+  await prisma.log_recepcion_detalle.deleteMany({});
+  await prisma.log_recepcion.deleteMany({});
+  await prisma.log_incidencia.deleteMany({});
+  await prisma.log_bulto_detalle.deleteMany({});
+  await prisma.log_estado_envio.deleteMany({});
   await prisma.inv_mov.deleteMany({});
   await prisma.log_evento_tracking.deleteMany({});
   await prisma.log_bulto.deleteMany({});
@@ -412,35 +426,35 @@ export async function main() {
     await prisma.log_ot_picking.create({ data: ot });
   }
 
-  // 9. DETALLE OT PICKING (Catálogo de sets LEGO emblemáticos - >15 registros)
+  // 9. DETALLE OT PICKING (Catálogo de sets LEGO emblemáticos - 14 registros)
   console.log('📌 Insertando detalle de productos LEGO en órdenes de trabajo...');
   const detallesData = [
     // OT-4091: Millennium Falcon (UCS)
-    { ot_id: 'OT-4091', id_producto: 75192, sku: 'LEGO-SW-75192', nombre_producto: 'LEGO Star Wars Millennium Falcon UCS', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 13.2, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
+    { id: 1, ot_id: 'OT-4091', id_producto: 75192, sku: 'LEGO-SW-75192', nombre_producto: 'LEGO Star Wars Millennium Falcon UCS', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 13.2, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
     // OT-4092: AT-AT + Batmobile Tumbler
-    { ot_id: 'OT-4092', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
-    { ot_id: 'OT-4092', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
+    { id: 2, ot_id: 'OT-4092', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
+    { id: 3, ot_id: 'OT-4092', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
     // OT-4093: Ninjago City Gardens
-    { ot_id: 'OT-4093', id_producto: 71741, sku: 'LEGO-NJ-71741', nombre_producto: 'LEGO Ninjago City Gardens', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 5.6, largo_cm: 58.2, alto_cm: 48.0, ancho_cm: 17.0 },
+    { id: 4, ot_id: 'OT-4093', id_producto: 71741, sku: 'LEGO-NJ-71741', nombre_producto: 'LEGO Ninjago City Gardens', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 5.6, largo_cm: 58.2, alto_cm: 48.0, ancho_cm: 17.0 },
     // OT-4094: Titanic
-    { ot_id: 'OT-4094', id_producto: 10294, sku: 'LEGO-IC-10294', nombre_producto: 'LEGO Icons Titanic (9090 piezas)', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 14.5, largo_cm: 60.0, alto_cm: 50.0, ancho_cm: 40.0 },
+    { id: 5, ot_id: 'OT-4094', id_producto: 10294, sku: 'LEGO-IC-10294', nombre_producto: 'LEGO Icons Titanic (9090 piezas)', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 14.5, largo_cm: 60.0, alto_cm: 50.0, ancho_cm: 40.0 },
     // OT-4095: Hogwarts Castle
-    { ot_id: 'OT-4095', id_producto: 71043, sku: 'LEGO-HP-71043', nombre_producto: 'LEGO Harry Potter Castillo de Hogwarts', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 7.5, largo_cm: 60.0, alto_cm: 51.0, ancho_cm: 20.0 },
+    { id: 6, ot_id: 'OT-4095', id_producto: 71043, sku: 'LEGO-HP-71043', nombre_producto: 'LEGO Harry Potter Castillo de Hogwarts', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 7.5, largo_cm: 60.0, alto_cm: 51.0, ancho_cm: 20.0 },
     // OT-4096: NASA Space Shuttle Discovery
-    { ot_id: 'OT-4096', id_producto: 10283, sku: 'LEGO-IC-10283', nombre_producto: 'LEGO NASA Space Shuttle Discovery', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 3.2, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
+    { id: 7, ot_id: 'OT-4096', id_producto: 10283, sku: 'LEGO-IC-10283', nombre_producto: 'LEGO NASA Space Shuttle Discovery', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 3.2, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
     // OT-4097 (Pendiente): Porsche 911
-    { ot_id: 'OT-4097', id_producto: 10295, sku: 'LEGO-IC-10295', nombre_producto: 'LEGO Icons Porsche 911 Turbo & Targa', cant_solicitada: 2, cant_recolectada: 0, peso_unitario_kg: 1.8, largo_cm: 48.0, alto_cm: 28.2, ancho_cm: 11.8 },
+    { id: 8, ot_id: 'OT-4097', id_producto: 10295, sku: 'LEGO-IC-10295', nombre_producto: 'LEGO Icons Porsche 911 Turbo & Targa', cant_solicitada: 2, cant_recolectada: 0, peso_unitario_kg: 1.8, largo_cm: 48.0, alto_cm: 28.2, ancho_cm: 11.8 },
     // OT-4098 (Parcial): Police Station + Camp Nou
-    { ot_id: 'OT-4098', id_producto: 10278, sku: 'LEGO-MD-10278', nombre_producto: 'LEGO Modular Police Station', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.9, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
-    { ot_id: 'OT-4098', id_producto: 10284, sku: 'LEGO-IC-10284', nombre_producto: 'LEGO Icons Camp Nou FC Barcelona', cant_solicitada: 1, cant_recolectada: 0, peso_unitario_kg: 5.3, largo_cm: 58.0, alto_cm: 48.0, ancho_cm: 17.0 },
+    { id: 9, ot_id: 'OT-4098', id_producto: 10278, sku: 'LEGO-MD-10278', nombre_producto: 'LEGO Modular Police Station', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.9, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
+    { id: 10, ot_id: 'OT-4098', id_producto: 10284, sku: 'LEGO-IC-10284', nombre_producto: 'LEGO Icons Camp Nou FC Barcelona', cant_solicitada: 1, cant_recolectada: 0, peso_unitario_kg: 5.3, largo_cm: 58.0, alto_cm: 48.0, ancho_cm: 17.0 },
     // OT-4099 (En Proceso): Eiffel Tower
-    { ot_id: 'OT-4099', id_producto: 10307, sku: 'LEGO-IC-10307', nombre_producto: 'LEGO Icons Torre Eiffel (149 cm)', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 12.0, largo_cm: 62.0, alto_cm: 52.0, ancho_cm: 39.0 },
+    { id: 11, ot_id: 'OT-4099', id_producto: 10307, sku: 'LEGO-IC-10307', nombre_producto: 'LEGO Icons Torre Eiffel (149 cm)', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 12.0, largo_cm: 62.0, alto_cm: 52.0, ancho_cm: 39.0 },
     // OT-4100 (Pendiente): Ideas Grand Piano
-    { ot_id: 'OT-4100', id_producto: 21323, sku: 'LEGO-ID-21323', nombre_producto: 'LEGO Ideas Grand Piano Motorizado', cant_solicitada: 1, cant_recolectada: 0, peso_unitario_kg: 5.8, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 16.0 },
+    { id: 12, ot_id: 'OT-4100', id_producto: 21323, sku: 'LEGO-ID-21323', nombre_producto: 'LEGO Ideas Grand Piano Motorizado', cant_solicitada: 1, cant_recolectada: 0, peso_unitario_kg: 5.8, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 16.0 },
     // OT-4101: Batman Batmobile
-    { ot_id: 'OT-4101', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
+    { id: 13, ot_id: 'OT-4101', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
     // OT-4102: AT-AT Walker
-    { ot_id: 'OT-4102', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
+    { id: 14, ot_id: 'OT-4102', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
   ];
 
   for (const det of detallesData) {
@@ -691,28 +705,287 @@ export async function main() {
     await prisma.inv_mov.create({ data: m });
   }
 
+  // 14. ESTADOS DE ENVÍO (log_estado_envio) (10 registros)
+  console.log('📌 Insertando catálogo de estados de envío...');
+  const estadosEnvioData = [
+    { id: 1, codigo: 'PREPARADO', nombre: 'Preparado', orden_flujo: 1, es_terminal: false },
+    { id: 2, codigo: 'ASIGNADO', nombre: 'Asignado', orden_flujo: 2, es_terminal: false },
+    { id: 3, codigo: 'DESPACHADO', nombre: 'Despachado', orden_flujo: 3, es_terminal: false },
+    { id: 4, codigo: 'EN_TRANSITO', nombre: 'En tránsito', orden_flujo: 4, es_terminal: false },
+    { id: 5, codigo: 'EN_REPARTO', nombre: 'En reparto última milla', orden_flujo: 5, es_terminal: false },
+    { id: 6, codigo: 'ENTREGADO_CONFORME', nombre: 'Entregado conforme', orden_flujo: 6, es_terminal: true },
+    { id: 7, codigo: 'ENTREGA_FALLIDA', nombre: 'Entrega Fallida', orden_flujo: 7, es_terminal: false },
+    { id: 8, codigo: 'REPROGRAMADO', nombre: 'Reprogramado', orden_flujo: 8, es_terminal: false },
+    { id: 9, codigo: 'DEVUELTO', nombre: 'Devuelto a bodega', orden_flujo: 9, es_terminal: true },
+    { id: 10, codigo: 'DERIVADO_POSTVENTA', nombre: 'Derivado a Postventa', orden_flujo: 10, es_terminal: true },
+  ];
+  for (const est of estadosEnvioData) {
+    await prisma.log_estado_envio.create({ data: est });
+  }
+
+  // 15. DETALLE DE BULTOS (log_bulto_detalle) (10 registros)
+  console.log('📌 Insertando detalle de bultos...');
+  const bultosDetalleData = [
+    { id: 1, bulto_id: 1, ot_detalle_id: 1, cantidad: 1 },
+    { id: 2, bulto_id: 2, ot_detalle_id: 2, cantidad: 1 },
+    { id: 3, bulto_id: 2, ot_detalle_id: 3, cantidad: 1 },
+    { id: 4, bulto_id: 3, ot_detalle_id: 4, cantidad: 1 },
+    { id: 5, bulto_id: 4, ot_detalle_id: 5, cantidad: 1 },
+    { id: 6, bulto_id: 5, ot_detalle_id: 6, cantidad: 1 },
+    { id: 7, bulto_id: 6, ot_detalle_id: 7, cantidad: 1 },
+    { id: 8, bulto_id: 7, ot_detalle_id: 1, cantidad: 1 },
+    { id: 9, bulto_id: 8, ot_detalle_id: 4, cantidad: 1 },
+    { id: 10, bulto_id: 9, ot_detalle_id: 2, cantidad: 1 },
+    { id: 11, bulto_id: 10, ot_detalle_id: 6, cantidad: 1 },
+  ];
+  for (const bd of bultosDetalleData) {
+    await prisma.log_bulto_detalle.create({ data: bd });
+  }
+
+  // 16. INCIDENCIAS DE DESPACHO (log_incidencia) (10 registros)
+  console.log('📌 Insertando incidencias de transporte...');
+  const incidenciasData = [
+    { id: 1, guia_id: 'GD-52302', tipo: 'DOMICILIO_CERRADO', descripcion: 'Primer intento fallido: Domicilio cerrado sin moradores en Coquimbo', id_caso_postventa: 5001, resuelta: false },
+    { id: 2, guia_id: 'GD-52303', tipo: 'RETRASO_RUTA', descripcion: 'Demora en ruta C-41 hacia Vicuña por controles viales', id_caso_postventa: null, resuelta: true },
+    { id: 3, guia_id: 'GD-52304', tipo: 'REVISION_EMPAQUE', descripcion: 'Refuerzo de esquina en centro de distribución para caja LEGO Titanic', id_caso_postventa: null, resuelta: true },
+    { id: 4, guia_id: 'GD-52305', tipo: 'ALTA_DEMANDA_HUB', descripcion: 'Retención temporal de 4h en sorter automático Pudahuel', id_caso_postventa: null, resuelta: true },
+    { id: 5, guia_id: 'GD-52301', tipo: 'CAMBIO_RECEPTOR', descripcion: 'Autorización telefónica para recepción en conserjería', id_caso_postventa: null, resuelta: true },
+    { id: 6, guia_id: 'GD-52306', tipo: 'RETIRO_REPROGRAMADO', descripcion: 'Móvil recolector reprogramado para ventana PM', id_caso_postventa: null, resuelta: false },
+    { id: 7, guia_id: 'GD-52307', tipo: 'DIRECCION_INCOMPLETA', descripcion: 'Aclaración de número de torre con cliente previo a entrega', id_caso_postventa: 5002, resuelta: true },
+    { id: 8, guia_id: 'GD-52308', tipo: 'CLIMA_ADVERSO', descripcion: 'Neblina densa en ruta costera retrasó salida matinal', id_caso_postventa: null, resuelta: true },
+    { id: 9, guia_id: 'GD-52309', tipo: 'ETIQUETA_REIMPRESA', descripcion: 'Código de barras reimpreso en andén de salida', id_caso_postventa: null, resuelta: true },
+    { id: 10, guia_id: 'GD-52310', tipo: 'SOBREDIMENSION', descripcion: 'Asignado a furgón de carga volumétrica especial', id_caso_postventa: null, resuelta: true },
+  ];
+  for (const inc of incidenciasData) {
+    await prisma.log_incidencia.create({ data: inc });
+  }
+
+  // 17. RECEPCIONES DE ÓRDENES DE COMPRA (log_recepcion y log_recepcion_detalle) (10 registros c/u)
+  console.log('📌 Insertando recepciones de órdenes de compra y su detalle...');
+  const recepcionesData = [
+    { id: 1, id_oc: 8001, id_empleado_receptor: 301, estado: 'CONFORME', observacion: 'Recepción completa lote Star Wars UCS sin daños' },
+    { id: 2, id_oc: 8002, id_empleado_receptor: 302, estado: 'CON_OBSERVACIONES', observacion: '1 caja con abolladura leve en esquina' },
+    { id: 3, id_oc: 8003, id_empleado_receptor: 303, estado: 'CONFORME', observacion: 'Ingreso línea LEGO Icons verificado al 100%' },
+    { id: 4, id_oc: 8004, id_empleado_receptor: 301, estado: 'PARCIAL', observacion: 'Faltaron 2 unidades de LEGO Camp Nou respecto a guía proveedor' },
+    { id: 5, id_oc: 8005, id_empleado_receptor: 304, estado: 'CONFORME', observacion: 'Pallet sellado de fábrica LEGO Dinamarca' },
+    { id: 6, id_oc: 8006, id_empleado_receptor: 302, estado: 'CONFORME', observacion: 'Recepción conforme línea Harry Potter' },
+    { id: 7, id_oc: 8007, id_empleado_receptor: 303, estado: 'CON_OBSERVACIONES', observacion: 'Sello de seguridad húmedo en 1 unidad' },
+    { id: 8, id_oc: 8008, id_empleado_receptor: 301, estado: 'CONFORME', observacion: 'Lote Ninjago ingresado a rack A-12' },
+    { id: 9, id_oc: 8009, id_empleado_receptor: 304, estado: 'CONFORME', observacion: 'Reposición stock seguridad temporada Q4' },
+    { id: 10, id_oc: 8010, id_empleado_receptor: 302, estado: 'CONFORME', observacion: 'Recepción validada por código EAN' },
+  ];
+  for (const rec of recepcionesData) {
+    await prisma.log_recepcion.create({ data: rec });
+  }
+
+  const recepcionesDetalleData = [
+    { id: 1, recepcion_id: 1, id_producto: 75192, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 2, recepcion_id: 2, id_producto: 75288, cantidad_esperada: 15, cantidad_recibida: 15, cantidad_danada: 1, motivo_dano: 'Caja aplastada en esquina superior' },
+    { id: 3, recepcion_id: 3, id_producto: 10294, cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
+    { id: 4, recepcion_id: 4, id_producto: 10284, cantidad_esperada: 12, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: 'Faltante de origen en despacho proveedor' },
+    { id: 5, recepcion_id: 5, id_producto: 76240, cantidad_esperada: 20, cantidad_recibida: 20, cantidad_danada: 0, motivo_dano: null },
+    { id: 6, recepcion_id: 6, id_producto: 71043, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 7, recepcion_id: 7, id_producto: 10283, cantidad_esperada: 14, cantidad_recibida: 14, cantidad_danada: 1, motivo_dano: 'Empaque exterior con humedad' },
+    { id: 8, recepcion_id: 8, id_producto: 71741, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 9, recepcion_id: 9, id_producto: 10307, cantidad_esperada: 6, cantidad_recibida: 6, cantidad_danada: 0, motivo_dano: null },
+    { id: 10, recepcion_id: 10, id_producto: 21323, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+  ];
+  for (const rdet of recepcionesDetalleData) {
+    await prisma.log_recepcion_detalle.create({ data: rdet });
+  }
+
+  // ==========================================================================
+  // 18. TABLAS DE PRUEBA DE MÓDULOS VECINOS (Sección 9.2 - 10 tablas test_log_*)
+  // ==========================================================================
+  console.log('📌 Insertando datos de prueba en las 10 tablas test_log_*...');
+
+  const testClientes = [
+    { id_cliente: 1001, nombre: 'Martín Almeyda', rut: '17.291.844-3', email: 'm.almeyda@cliente.cl' },
+    { id_cliente: 1002, nombre: 'Constanza Valenzuela', rut: '18.452.910-1', email: 'c.valenzuela@cliente.cl' },
+    { id_cliente: 1003, nombre: 'Felipe Quiroz', rut: '15.632.189-5', email: 'f.quiroz@ucn.cl' },
+    { id_cliente: 1004, nombre: 'Bárbara Henríquez', rut: '19.821.432-8', email: 'b.henriquez@cliente.cl' },
+    { id_cliente: 1005, nombre: 'Rodrigo Saavedra', rut: '16.112.784-K', email: 'r.saavedra@cliente.cl' },
+    { id_cliente: 1006, nombre: 'Camila Montecinos', rut: '18.990.231-7', email: 'c.montecinos@cliente.cl' },
+    { id_cliente: 1007, nombre: 'Ignacio Cifuentes', rut: '17.845.620-2', email: 'i.cifuentes@cliente.cl' },
+    { id_cliente: 1008, nombre: 'Valentina Soto', rut: '19.412.380-6', email: 'v.soto@cliente.cl' },
+    { id_cliente: 1009, nombre: 'Sebastián Lagos', rut: '16.782.901-4', email: 's.lagos@cliente.cl' },
+    { id_cliente: 1010, nombre: 'Paulina Morales', rut: '17.654.321-0', email: 'p.morales@cliente.cl' },
+    { id_cliente: 1011, nombre: 'Gastón Araya', rut: '14.980.123-9', email: 'g.araya@cliente.cl' },
+  ];
+  for (const cli of testClientes) {
+    await prisma.ventasCliente.create({ data: cli });
+  }
+
+  const testProductos = [
+    { id_producto: 75192, sku: 'LEGO-SW-75192', nombre: 'LEGO Star Wars Millennium Falcon UCS', peso_unitario_kg: 13.2, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
+    { id_producto: 75252, sku: 'LEGO-SW-75252', nombre: 'LEGO Star Wars Imperial Star Destroyer UCS', peso_unitario_kg: 12.5, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
+    { id_producto: 75288, sku: 'LEGO-SW-75288', nombre: 'LEGO Star Wars AT-AT Walker', peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
+    { id_producto: 76240, sku: 'LEGO-DC-76240', nombre: 'LEGO DC Batman Batmobile Tumbler', peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
+    { id_producto: 71741, sku: 'LEGO-NJ-71741', nombre: 'LEGO Ninjago City Gardens', peso_unitario_kg: 5.6, largo_cm: 58.2, alto_cm: 48.0, ancho_cm: 17.0 },
+    { id_producto: 10294, sku: 'LEGO-IC-10294', nombre: 'LEGO Icons Titanic (9090 piezas)', peso_unitario_kg: 14.5, largo_cm: 60.0, alto_cm: 50.0, ancho_cm: 40.0 },
+    { id_producto: 71043, sku: 'LEGO-HP-71043', nombre: 'LEGO Harry Potter Castillo de Hogwarts', peso_unitario_kg: 7.5, largo_cm: 60.0, alto_cm: 51.0, ancho_cm: 20.0 },
+    { id_producto: 10283, sku: 'LEGO-IC-10283', nombre: 'LEGO NASA Space Shuttle Discovery', peso_unitario_kg: 3.2, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
+    { id_producto: 10295, sku: 'LEGO-IC-10295', nombre: 'LEGO Icons Porsche 911 Turbo & Targa', peso_unitario_kg: 1.8, largo_cm: 48.0, alto_cm: 28.2, ancho_cm: 11.8 },
+    { id_producto: 10278, sku: 'LEGO-MD-10278', nombre: 'LEGO Modular Police Station', peso_unitario_kg: 2.9, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
+    { id_producto: 10284, sku: 'LEGO-IC-10284', nombre: 'LEGO Icons Camp Nou FC Barcelona', peso_unitario_kg: 5.3, largo_cm: 58.0, alto_cm: 48.0, ancho_cm: 17.0 },
+    { id_producto: 10307, sku: 'LEGO-IC-10307', nombre: 'LEGO Icons Torre Eiffel (149 cm)', peso_unitario_kg: 12.0, largo_cm: 62.0, alto_cm: 52.0, ancho_cm: 39.0 },
+    { id_producto: 21323, sku: 'LEGO-ID-21323', nombre: 'LEGO Ideas Grand Piano Motorizado', peso_unitario_kg: 5.8, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 16.0 },
+  ];
+  for (const prod of testProductos) {
+    await prisma.invProducto.create({ data: prod });
+  }
+
+  const testPedidos = [
+    { id_pedido: 1, id_cliente: 1001, numero: 'PED-10294', estado: 'CONFIRMADO' },
+    { id_pedido: 2, id_cliente: 1002, numero: 'PED-10295', estado: 'CONFIRMADO' },
+    { id_pedido: 3, id_cliente: 1003, numero: 'PED-10296', estado: 'CONFIRMADO' },
+    { id_pedido: 4, id_cliente: 1005, numero: 'PED-10297', estado: 'CONFIRMADO' },
+    { id_pedido: 5, id_cliente: 1006, numero: 'PED-10298', estado: 'CONFIRMADO' },
+    { id_pedido: 6, id_cliente: 1007, numero: 'PED-10299', estado: 'CONFIRMADO' },
+    { id_pedido: 7, id_cliente: 1004, numero: 'PED-10300', estado: 'CONFIRMADO' },
+    { id_pedido: 8, id_cliente: 1008, numero: 'PED-10301', estado: 'CONFIRMADO' },
+    { id_pedido: 9, id_cliente: 1009, numero: 'PED-10302', estado: 'PENDIENTE_PAGO' },
+    { id_pedido: 10, id_cliente: 1010, numero: 'PED-10303', estado: 'CANCELADO' },
+    { id_pedido: 11, id_cliente: 1011, numero: 'PED-10304', estado: 'CONFIRMADO' },
+    { id_pedido: 12, id_cliente: 1001, numero: 'PED-10305', estado: 'CONFIRMADO' },
+  ];
+  for (const ped of testPedidos) {
+    await prisma.ventasPedido.create({ data: ped });
+  }
+
+  const testPedidosDetalle = [
+    { id: 1, id_pedido: 1, id_producto: 75192, cantidad: 1 },
+    { id: 2, id_pedido: 2, id_producto: 75288, cantidad: 1 },
+    { id: 3, id_pedido: 2, id_producto: 76240, cantidad: 1 },
+    { id: 4, id_pedido: 3, id_producto: 71741, cantidad: 1 },
+    { id: 5, id_pedido: 4, id_producto: 10294, cantidad: 1 },
+    { id: 6, id_pedido: 5, id_producto: 71043, cantidad: 1 },
+    { id: 7, id_pedido: 6, id_producto: 10283, cantidad: 1 },
+    { id: 8, id_pedido: 7, id_producto: 10295, cantidad: 2 },
+    { id: 9, id_pedido: 8, id_producto: 10278, cantidad: 1 },
+    { id: 10, id_pedido: 8, id_producto: 10284, cantidad: 1 },
+    { id: 11, id_pedido: 11, id_producto: 76240, cantidad: 1 },
+    { id: 12, id_pedido: 12, id_producto: 75252, cantidad: 1 },
+  ];
+  for (const pdet of testPedidosDetalle) {
+    await prisma.ventasPedidoDetalle.create({ data: pdet });
+  }
+
+  const testEmpleados = [
+    { id_empleado: 301, nombre: 'Carlos Gómez', cargo: 'Operador de Bodega Central' },
+    { id_empleado: 302, nombre: 'Juan Tapia', cargo: 'Operador de Picking Zona Norte' },
+    { id_empleado: 303, nombre: 'Loreto Silva', cargo: 'Operadora de Bodega Packing' },
+    { id_empleado: 304, nombre: 'Esteban Paredes', cargo: 'Operador de Recepción y Despacho' },
+    { id_empleado: 305, nombre: 'Maximiliano Pizarro', cargo: 'Coordinador de Despacho' },
+    { id_empleado: 306, nombre: 'Máximo Sazo', cargo: 'Administrador de Logística' },
+    { id_empleado: 307, nombre: 'Nicolás Rojas', cargo: 'Coordinador de Transporte' },
+    { id_empleado: 308, nombre: 'Daniela Infante', cargo: 'Analista de Control Logístico' },
+    { id_empleado: 309, nombre: 'Javier Catalán', cargo: 'Supervisor de Última Milla' },
+    { id_empleado: 310, nombre: 'Bastián Salinas', cargo: 'Especialista de Inventario y Cubicación' },
+  ];
+  for (const emp of testEmpleados) {
+    await prisma.rrhhEmpleado.create({ data: emp });
+  }
+
+  const testRoles = [
+    { id_rol: 1, nombre: 'Administrador' },
+    { id_rol: 2, nombre: 'Coordinador de despacho' },
+    { id_rol: 3, nombre: 'Operador de bodega' },
+    { id_rol: 4, nombre: 'Supervisor de Transporte' },
+    { id_rol: 5, nombre: 'Analista de KPIs' },
+    { id_rol: 6, nombre: 'Inspector de Recepción' },
+    { id_rol: 7, nombre: 'Encargado de Cubicación' },
+    { id_rol: 8, nombre: 'Auditor de Inventario' },
+    { id_rol: 9, nombre: 'Ejecutivo de Postventa' },
+    { id_rol: 10, nombre: 'Consulta General ERP' },
+  ];
+  for (const rol of testRoles) {
+    await prisma.rrhhRol.create({ data: rol });
+  }
+
+  const testUsuarios = [
+    { id_usuario: 1, id_empleado: 305, id_rol: 2, username: 'mpizarro', password_hash: '$2b$10$hash_coordinador_1', activo: true },
+    { id_usuario: 2, id_empleado: 306, id_rol: 1, username: 'msazo', password_hash: '$2b$10$hash_admin_1', activo: true },
+    { id_usuario: 3, id_empleado: 301, id_rol: 3, username: 'cgomez', password_hash: '$2b$10$hash_operador_1', activo: true },
+    { id_usuario: 4, id_empleado: 302, id_rol: 3, username: 'jtapia', password_hash: '$2b$10$hash_operador_2', activo: true },
+    { id_usuario: 5, id_empleado: 303, id_rol: 3, username: 'lsilva', password_hash: '$2b$10$hash_operador_3', activo: true },
+    { id_usuario: 6, id_empleado: 304, id_rol: 3, username: 'eparedes', password_hash: '$2b$10$hash_operador_4', activo: true },
+    { id_usuario: 7, id_empleado: 307, id_rol: 2, username: 'nrojas', password_hash: '$2b$10$hash_coordinador_2', activo: true },
+    { id_usuario: 8, id_empleado: 308, id_rol: 1, username: 'dinfante', password_hash: '$2b$10$hash_admin_2', activo: true },
+    { id_usuario: 9, id_empleado: 309, id_rol: 2, username: 'jcatalan', password_hash: '$2b$10$hash_coordinador_3', activo: true },
+    { id_usuario: 10, id_empleado: 310, id_rol: 3, username: 'bsalinas', password_hash: '$2b$10$hash_operador_5', activo: true },
+  ];
+  for (const usr of testUsuarios) {
+    await prisma.rrhhUsuario.create({ data: usr });
+  }
+
+  const testComprasOc = [
+    { id_oc: 8001, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'EMITIDA' },
+    { id_oc: 8002, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
+    { id_oc: 8003, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
+    { id_oc: 8004, proveedor: 'Importadora Bricks Chile SpA', estado: 'PARCIAL' },
+    { id_oc: 8005, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
+    { id_oc: 8006, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
+    { id_oc: 8007, proveedor: 'Importadora Bricks Chile SpA', estado: 'EMITIDA' },
+    { id_oc: 8008, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
+    { id_oc: 8009, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
+    { id_oc: 8010, proveedor: 'Distribuidora Oficial Juguetes Sur Ltda.', estado: 'RECIBIDA' },
+  ];
+  for (const oc of testComprasOc) {
+    await prisma.comprasOc.create({ data: oc });
+  }
+
+  const testComprasOcDetalle = [
+    { id: 1, id_oc: 8001, id_producto: 75192, cantidad_esperada: 10 },
+    { id: 2, id_oc: 8002, id_producto: 75288, cantidad_esperada: 15 },
+    { id: 3, id_oc: 8003, id_producto: 10294, cantidad_esperada: 8 },
+    { id: 4, id_oc: 8004, id_producto: 10284, cantidad_esperada: 12 },
+    { id: 5, id_oc: 8005, id_producto: 76240, cantidad_esperada: 20 },
+    { id: 6, id_oc: 8006, id_producto: 71043, cantidad_esperada: 10 },
+    { id: 7, id_oc: 8007, id_producto: 10283, cantidad_esperada: 14 },
+    { id: 8, id_oc: 8008, id_producto: 71741, cantidad_esperada: 10 },
+    { id: 9, id_oc: 8009, id_producto: 10307, cantidad_esperada: 6 },
+    { id: 10, id_oc: 8010, id_producto: 21323, cantidad_esperada: 10 },
+  ];
+  for (const ocd of testComprasOcDetalle) {
+    await prisma.comprasOcDetalle.create({ data: ocd });
+  }
+
   // Sincronizar secuencias autoincrementales en el esquema logistica tras inserción de IDs explícitos
-  const tablasConSecuencia = [
-    'log_region',
-    'log_comuna',
-    'log_transportista',
-    'log_servicio',
-    'log_cobertura',
-    'log_tarifa',
-    'log_direccion',
-    'log_ot_picking_detalle',
-    'log_bulto',
-    'log_evento_tracking',
-    'inv_mov',
+  const tablasConSecuencia: Array<{ tabla: string; col: string }> = [
+    { tabla: 'log_region', col: 'id' },
+    { tabla: 'log_comuna', col: 'id' },
+    { tabla: 'log_transportista', col: 'id' },
+    { tabla: 'log_servicio', col: 'id' },
+    { tabla: 'log_cobertura', col: 'id' },
+    { tabla: 'log_tarifa', col: 'id' },
+    { tabla: 'log_direccion', col: 'id' },
+    { tabla: 'log_ot_picking_detalle', col: 'id' },
+    { tabla: 'log_bulto', col: 'id' },
+    { tabla: 'log_evento_tracking', col: 'id' },
+    { tabla: 'log_estado_envio', col: 'id' },
+    { tabla: 'log_bulto_detalle', col: 'id' },
+    { tabla: 'log_incidencia', col: 'id' },
+    { tabla: 'log_recepcion', col: 'id' },
+    { tabla: 'log_recepcion_detalle', col: 'id' },
+    { tabla: 'test_log_ventas_cliente', col: 'id_cliente' },
+    { tabla: 'test_log_ventas_pedido', col: 'id_pedido' },
+    { tabla: 'test_log_ventas_pedido_detalle', col: 'id' },
+    { tabla: 'test_log_inv_mov', col: 'id_mov' },
+    { tabla: 'test_log_rrhh_empleado', col: 'id_empleado' },
+    { tabla: 'test_log_rrhh_rol', col: 'id_rol' },
+    { tabla: 'test_log_rrhh_usuario', col: 'id_usuario' },
+    { tabla: 'test_log_compras_oc', col: 'id_oc' },
+    { tabla: 'test_log_compras_oc_detalle', col: 'id' },
   ];
 
-  for (const tabla of tablasConSecuencia) {
+  for (const item of tablasConSecuencia) {
     await prisma.$executeRawUnsafe(
-      `SELECT setval(pg_get_serial_sequence('logistica.${tabla}', 'id'), COALESCE((SELECT MAX(id) FROM logistica.${tabla}), 1), true);`
+      `SELECT setval(pg_get_serial_sequence('logistica.${item.tabla}', '${item.col}'), COALESCE((SELECT MAX(${item.col}) FROM logistica.${item.tabla}), 1), true);`
     );
   }
 
-  console.log('✅ Seed completado exitosamente en esquema "logistica" con más de 10 registros por tabla.');
+  console.log('✅ Seed completado exitosamente en esquema "logistica" (27 tablas pobladas: 17 log_* y 10 test_log_* con >= 10 registros c/u).');
 }
 
 if (require.main === module) {

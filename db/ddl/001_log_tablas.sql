@@ -142,11 +142,130 @@ CREATE TABLE IF NOT EXISTS logistica.log_evento_tracking (
   observacion TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS logistica.inv_mov (
+-- =============================================================================
+-- 5 Tablas adicionales del Modelo Lógico del Informe (Completando las 17 log_*)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS logistica.log_estado_envio (
   id SERIAL PRIMARY KEY,
+  codigo TEXT NOT NULL UNIQUE,
+  nombre TEXT NOT NULL,
+  orden_flujo INTEGER NOT NULL,
+  es_terminal BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE TABLE IF NOT EXISTS logistica.log_bulto_detalle (
+  id SERIAL PRIMARY KEY,
+  bulto_id INTEGER NOT NULL REFERENCES logistica.log_bulto(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  ot_detalle_id INTEGER NOT NULL REFERENCES logistica.log_ot_picking_detalle(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  cantidad INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logistica.log_incidencia (
+  id SERIAL PRIMARY KEY,
+  guia_id TEXT NOT NULL REFERENCES logistica.log_guia_despacho(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  tipo TEXT NOT NULL,
+  fecha_registro TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  descripcion TEXT NOT NULL,
+  id_caso_postventa INTEGER,
+  resuelta BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE TABLE IF NOT EXISTS logistica.log_recepcion (
+  id SERIAL PRIMARY KEY,
+  id_oc INTEGER NOT NULL,
+  id_empleado_receptor INTEGER NOT NULL,
+  fecha_recepcion TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  estado TEXT NOT NULL,
+  observacion TEXT
+);
+
+CREATE TABLE IF NOT EXISTS logistica.log_recepcion_detalle (
+  id SERIAL PRIMARY KEY,
+  recepcion_id INTEGER NOT NULL REFERENCES logistica.log_recepcion(id) ON DELETE CASCADE ON UPDATE CASCADE,
   id_producto INTEGER NOT NULL,
-  tipo TEXT NOT NULL DEFAULT 'SALIDA',
+  cantidad_esperada INTEGER NOT NULL,
+  cantidad_recibida INTEGER NOT NULL,
+  cantidad_danada INTEGER NOT NULL DEFAULT 0,
+  motivo_dano TEXT
+);
+
+-- =============================================================================
+-- 10 Tablas de prueba que simulan otros módulos (Sección 9.2 - test_log_*)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_ventas_cliente (
+  id_cliente SERIAL PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  rut TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_ventas_pedido (
+  id_pedido SERIAL PRIMARY KEY,
+  id_cliente INTEGER NOT NULL REFERENCES logistica.test_log_ventas_cliente(id_cliente) ON DELETE CASCADE ON UPDATE CASCADE,
+  numero TEXT NOT NULL UNIQUE,
+  fecha TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  estado TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_ventas_pedido_detalle (
+  id SERIAL PRIMARY KEY,
+  id_pedido INTEGER NOT NULL REFERENCES logistica.test_log_ventas_pedido(id_pedido) ON DELETE CASCADE ON UPDATE CASCADE,
+  id_producto INTEGER NOT NULL,
+  cantidad INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_inv_producto (
+  id_producto INTEGER PRIMARY KEY,
+  sku TEXT NOT NULL UNIQUE,
+  nombre TEXT NOT NULL,
+  peso_unitario_kg NUMERIC(10, 2),
+  largo_cm NUMERIC(10, 2),
+  alto_cm NUMERIC(10, 2),
+  ancho_cm NUMERIC(10, 2)
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_inv_mov (
+  id_mov SERIAL PRIMARY KEY,
+  id_producto INTEGER NOT NULL,
+  tipo TEXT NOT NULL,
   cantidad INTEGER NOT NULL,
+  fecha TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   referencia_origen TEXT NOT NULL,
-  fecha TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id_usuario INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_rrhh_empleado (
+  id_empleado SERIAL PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  cargo TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_rrhh_rol (
+  id_rol SERIAL PRIMARY KEY,
+  nombre TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_rrhh_usuario (
+  id_usuario SERIAL PRIMARY KEY,
+  id_empleado INTEGER NOT NULL REFERENCES logistica.test_log_rrhh_empleado(id_empleado) ON DELETE CASCADE ON UPDATE CASCADE,
+  id_rol INTEGER NOT NULL REFERENCES logistica.test_log_rrhh_rol(id_rol) ON DELETE CASCADE ON UPDATE CASCADE,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  activo BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_compras_oc (
+  id_oc SERIAL PRIMARY KEY,
+  proveedor TEXT NOT NULL,
+  fecha TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  estado TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logistica.test_log_compras_oc_detalle (
+  id SERIAL PRIMARY KEY,
+  id_oc INTEGER NOT NULL REFERENCES logistica.test_log_compras_oc(id_oc) ON DELETE CASCADE ON UPDATE CASCADE,
+  id_producto INTEGER NOT NULL,
+  cantidad_esperada INTEGER NOT NULL
 );

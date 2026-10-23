@@ -168,7 +168,8 @@ model log_ot_picking_detalle {
   alto_cm          Decimal?       @db.Decimal(10, 2)
   ancho_cm         Decimal?       @db.Decimal(10, 2)
 
-  ot               log_ot_picking @relation(fields: [ot_id], references: [id], onDelete: Cascade)
+  ot               log_ot_picking      @relation(fields: [ot_id], references: [id], onDelete: Cascade)
+  bulto_detalles   log_bulto_detalle[]
 
   @@map("log_ot_picking_detalle")
   @@schema("logistica")
@@ -194,21 +195,23 @@ model log_guia_despacho {
   direccion                   log_direccion         @relation(fields: [direccion_id], references: [id])
   bultos                      log_bulto[]
   eventos                     log_evento_tracking[]
+  incidencias                 log_incidencia[]
 
   @@map("log_guia_despacho")
   @@schema("logistica")
 }
 
 model log_bulto {
-  id                  Int               @id @default(autoincrement())
+  id                  Int                 @id @default(autoincrement())
   guia_id             String
-  largo_cm            Decimal           @db.Decimal(10, 2)
-  alto_cm             Decimal           @db.Decimal(10, 2)
-  ancho_cm            Decimal           @db.Decimal(10, 2)
-  peso_real_kg        Decimal           @db.Decimal(10, 2)
-  peso_volumetrico_kg Decimal           @db.Decimal(10, 2)
+  largo_cm            Decimal             @db.Decimal(10, 2)
+  alto_cm             Decimal             @db.Decimal(10, 2)
+  ancho_cm            Decimal             @db.Decimal(10, 2)
+  peso_real_kg        Decimal             @db.Decimal(10, 2)
+  peso_volumetrico_kg Decimal             @db.Decimal(10, 2)
 
-  guia                log_guia_despacho @relation(fields: [guia_id], references: [id], onDelete: Cascade)
+  guia                log_guia_despacho   @relation(fields: [guia_id], references: [id], onDelete: Cascade)
+  detalles            log_bulto_detalle[]
 
   @@map("log_bulto")
   @@schema("logistica")
@@ -229,13 +232,201 @@ model log_evento_tracking {
 }
 
 model inv_mov {
-  id               Int      @id @default(autoincrement())
-  id_producto      Int
-  tipo             String   @default("SALIDA")
-  cantidad         Int
+  id                Int      @id @default(autoincrement()) @map("id_mov")
+  id_producto       Int
+  tipo              String   @default("SALIDA")
+  cantidad          Int
   referencia_origen String
-  fecha            DateTime @default(now())
+  fecha             DateTime @default(now())
+  id_usuario        Int?
 
-  @@map("inv_mov")
+  @@map("test_log_inv_mov")
+  @@schema("logistica")
+}
+
+// ============================================================================
+// TABLAS ADICIONALES DEL MODELO LÓGICO DEL INFORME (Completando las 17 log_*)
+// ============================================================================
+
+model log_estado_envio {
+  id          Int     @id @default(autoincrement())
+  codigo      String  @unique
+  nombre      String
+  orden_flujo Int
+  es_terminal Boolean @default(false)
+
+  @@map("log_estado_envio")
+  @@schema("logistica")
+}
+
+model log_bulto_detalle {
+  id            Int                    @id @default(autoincrement())
+  bulto_id      Int
+  ot_detalle_id Int
+  cantidad      Int
+
+  bulto         log_bulto              @relation(fields: [bulto_id], references: [id], onDelete: Cascade)
+  ot_detalle    log_ot_picking_detalle @relation(fields: [ot_detalle_id], references: [id], onDelete: Cascade)
+
+  @@map("log_bulto_detalle")
+  @@schema("logistica")
+}
+
+model log_incidencia {
+  id                Int               @id @default(autoincrement())
+  guia_id           String
+  tipo              String
+  fecha_registro    DateTime          @default(now())
+  descripcion       String
+  id_caso_postventa Int?
+  resuelta          Boolean           @default(false)
+
+  guia              log_guia_despacho @relation(fields: [guia_id], references: [id], onDelete: Cascade)
+
+  @@map("log_incidencia")
+  @@schema("logistica")
+}
+
+model log_recepcion {
+  id                   Int                     @id @default(autoincrement())
+  id_oc                Int
+  id_empleado_receptor Int
+  fecha_recepcion      DateTime                @default(now())
+  estado               String
+  observacion          String?
+
+  detalles             log_recepcion_detalle[]
+
+  @@map("log_recepcion")
+  @@schema("logistica")
+}
+
+model log_recepcion_detalle {
+  id                Int           @id @default(autoincrement())
+  recepcion_id      Int
+  id_producto       Int
+  cantidad_esperada Int
+  cantidad_recibida Int
+  cantidad_danada   Int           @default(0)
+  motivo_dano       String?
+
+  recepcion         log_recepcion @relation(fields: [recepcion_id], references: [id], onDelete: Cascade)
+
+  @@map("log_recepcion_detalle")
+  @@schema("logistica")
+}
+
+// ============================================================================
+// TABLAS DE PRUEBA QUE SIMULAN OTROS MÓDULOS (Sección 9.2 - test_log_*)
+// ============================================================================
+
+model VentasCliente {
+  id_cliente Int            @id @default(autoincrement())
+  nombre     String
+  rut        String         @unique
+  email      String
+
+  pedidos    VentasPedido[]
+
+  @@map("test_log_ventas_cliente")
+  @@schema("logistica")
+}
+
+model VentasPedido {
+  id_pedido  Int                   @id @default(autoincrement())
+  id_cliente Int
+  numero     String                @unique
+  fecha      DateTime              @default(now())
+  estado     String
+
+  cliente    VentasCliente         @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade)
+  detalles   VentasPedidoDetalle[]
+
+  @@map("test_log_ventas_pedido")
+  @@schema("logistica")
+}
+
+model VentasPedidoDetalle {
+  id          Int          @id @default(autoincrement())
+  id_pedido   Int
+  id_producto Int
+  cantidad    Int
+
+  pedido      VentasPedido @relation(fields: [id_pedido], references: [id_pedido], onDelete: Cascade)
+
+  @@map("test_log_ventas_pedido_detalle")
+  @@schema("logistica")
+}
+
+model InvProducto {
+  id_producto      Int      @id
+  sku              String   @unique
+  nombre           String
+  peso_unitario_kg Decimal? @db.Decimal(10, 2)
+  largo_cm         Decimal? @db.Decimal(10, 2)
+  alto_cm          Decimal? @db.Decimal(10, 2)
+  ancho_cm         Decimal? @db.Decimal(10, 2)
+
+  @@map("test_log_inv_producto")
+  @@schema("logistica")
+}
+
+model RrhhEmpleado {
+  id_empleado Int           @id @default(autoincrement())
+  nombre      String
+  cargo       String
+
+  usuarios    RrhhUsuario[]
+
+  @@map("test_log_rrhh_empleado")
+  @@schema("logistica")
+}
+
+model RrhhRol {
+  id_rol   Int           @id @default(autoincrement())
+  nombre   String        @unique
+
+  usuarios RrhhUsuario[]
+
+  @@map("test_log_rrhh_rol")
+  @@schema("logistica")
+}
+
+model RrhhUsuario {
+  id_usuario    Int          @id @default(autoincrement())
+  id_empleado   Int
+  id_rol        Int
+  username      String       @unique
+  password_hash String
+  activo        Boolean      @default(true)
+
+  empleado      RrhhEmpleado @relation(fields: [id_empleado], references: [id_empleado], onDelete: Cascade)
+  rol           RrhhRol      @relation(fields: [id_rol], references: [id_rol], onDelete: Cascade)
+
+  @@map("test_log_rrhh_usuario")
+  @@schema("logistica")
+}
+
+model ComprasOc {
+  id_oc     Int                @id @default(autoincrement())
+  proveedor String
+  fecha     DateTime           @default(now())
+  estado    String
+
+  detalles  ComprasOcDetalle[]
+
+  @@map("test_log_compras_oc")
+  @@schema("logistica")
+}
+
+model ComprasOcDetalle {
+  id                Int       @id @default(autoincrement())
+  id_oc             Int
+  id_producto       Int
+  cantidad_esperada Int
+
+  oc                ComprasOc @relation(fields: [id_oc], references: [id_oc], onDelete: Cascade)
+
+  @@map("test_log_compras_oc_detalle")
   @@schema("logistica")
 }

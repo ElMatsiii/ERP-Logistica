@@ -11,14 +11,29 @@ async function main() {
   const ddlPath = path.resolve(process.cwd(), 'db/ddl/001_log_tablas.sql');
   console.log(`📄 Ejecutando DDL seguro e idempotente desde: ${ddlPath}`);
 
-  const sql = fs.readFileSync(ddlPath, 'utf-8');
+  const rawSql = fs.readFileSync(ddlPath, 'utf-8');
+  // Eliminar comentarios de línea
+  const sqlSinComentarios = rawSql
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('--'))
+    .join('\n');
 
-  // Separar bloques DO $$ ... $$; y sentencias CREATE ...;
-  const statements: string[] = [];
-  const regex = /(DO\s+\$\$[\s\S]*?\$\$;|CREATE\s+[\s\S]*?;)/gi;
+  // Extraer bloques DO $$ ... $$; y sentencias terminadas en ;
+  const statements: string[] = ['CREATE SCHEMA IF NOT EXISTS logistica;'];
+  const doBlockRegex = /DO\s+\$\$[\s\S]*?\$\$\s*;/gi;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(sql)) !== null) {
-    statements.push(match[1].trim());
+  while ((match = doBlockRegex.exec(sqlSinComentarios)) !== null) {
+    statements.push(match[0].trim());
+  }
+
+  const restoSql = sqlSinComentarios
+    .replace(doBlockRegex, '')
+    .replace(/CREATE\s+SCHEMA\s+IF\s+NOT\s+EXISTS\s+logistica\s*;/gi, '');
+  for (const part of restoSql.split(';')) {
+    const stmt = part.trim();
+    if (stmt.length > 0) {
+      statements.push(`${stmt};`);
+    }
   }
 
   for (const stmt of statements) {
