@@ -1,71 +1,42 @@
 import React from 'react';
 import { Package, Truck, UserCircle, ShieldCheck } from 'lucide-react';
 
-interface NavbarProps {
+interface NavTabsProps {
   activeTab: 'emision' | 'tracking';
   setActiveTab: (tab: 'emision' | 'tracking') => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
+export const Navbar: React.FC = () => {
   return (
     <header className="relative bg-[#e52521] text-white shadow-md z-30 select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
           {/* Logo & Marca LesGo */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              {/* Bloque LEGO Icon */}
-              <div className="w-12 h-12 bg-white rounded-lg p-1.5 shadow-md flex items-center justify-center transform hover:rotate-6 transition-transform">
-                <div className="grid grid-cols-2 gap-1 w-full h-full p-1 bg-[#e52521] rounded">
-                  <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
-                  <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
-                  <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
-                  <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="font-lego text-3xl font-bold tracking-tight text-[#ffcf00] drop-shadow-sm">
-                    LesGo
-                  </span>
-                  <span className="bg-white/20 text-white text-xs font-semibold px-2 py-0.5 rounded tracking-wider uppercase">
-                    ERP
-                  </span>
-                </div>
-                <p className="text-xs text-red-100 font-medium tracking-wide">
-                  Módulo de Logística y Transporte
-                </p>
+          <div className="flex items-center space-x-2">
+            {/* Bloque LEGO Icon */}
+            <div className="w-12 h-12 bg-white rounded-lg p-1.5 shadow-md flex items-center justify-center transform hover:rotate-6 transition-transform">
+              <div className="grid grid-cols-2 gap-1 w-full h-full p-1 bg-[#e52521] rounded">
+                <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
+                <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
+                <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
+                <div className="w-full h-full bg-[#ffcf00] rounded-full shadow-inner"></div>
               </div>
             </div>
-
-            {/* Pestañas de navegación central */}
-            <nav className="hidden md:flex ml-8 space-x-2">
-              <button
-                onClick={() => setActiveTab('emision')}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  activeTab === 'emision'
-                    ? 'bg-white text-[#e52521] shadow-lg shadow-black/10 scale-105'
-                    : 'text-white hover:bg-white/15'
-                }`}
-              >
-                <Package className="w-4 h-4" />
-                <span>Emisión de Guía</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('tracking')}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  activeTab === 'tracking'
-                    ? 'bg-white text-[#e52521] shadow-lg shadow-black/10 scale-105'
-                    : 'text-white hover:bg-white/15'
-                }`}
-              >
-                <Truck className="w-4 h-4" />
-                <span>Consola de Tracking</span>
-              </button>
-            </nav>
+            
+            <div>
+              <div className="flex items-center space-x-1.5">
+                <span className="font-lego text-3xl font-bold tracking-tight text-[#ffcf00] drop-shadow-sm">
+                  LesGo
+                </span>
+                <span className="bg-white/20 text-white text-xs font-semibold px-2 py-0.5 rounded tracking-wider uppercase">
+                  ERP
+                </span>
+              </div>
+              <p className="text-xs text-red-100 font-medium tracking-wide">
+                Módulo de Logística y Transporte
+              </p>
+            </div>
           </div>
 
           {/* Perfil de usuario en la esquina superior derecha */}
@@ -87,28 +58,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full"></span>
             </div>
           </div>
-        </div>
-
-        {/* Mobile Navigation bar */}
-        <div className="flex md:hidden pb-3 space-x-2">
-          <button
-            onClick={() => setActiveTab('emision')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-bold ${
-              activeTab === 'emision' ? 'bg-white text-[#e52521]' : 'bg-red-800/40 text-white'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Emisión de Guía</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('tracking')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-bold ${
-              activeTab === 'tracking' ? 'bg-white text-[#e52521]' : 'bg-red-800/40 text-white'
-            }`}
-          >
-            <Truck className="w-4 h-4" />
-            <span>Consola de Tracking</span>
-          </button>
         </div>
       </div>
 
@@ -138,5 +87,36 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
         </svg>
       </div>
     </header>
+  );
+};
+
+// Pestañas de navegación ubicadas sobre el título de cada página
+export const NavTabs: React.FC<NavTabsProps> = ({ activeTab, setActiveTab }) => {
+  return (
+    <nav className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex space-x-2">
+      <button
+        onClick={() => setActiveTab('emision')}
+        className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+          activeTab === 'emision'
+            ? 'bg-[#e52521] text-white shadow-md'
+            : 'bg-white text-slate-600 border border-slate-200 hover:text-[#e52521] hover:border-red-200'
+        }`}
+      >
+        <Package className="w-4 h-4" />
+        <span>Emisión de Guía</span>
+      </button>
+
+      <button
+        onClick={() => setActiveTab('tracking')}
+        className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+          activeTab === 'tracking'
+            ? 'bg-[#e52521] text-white shadow-md'
+            : 'bg-white text-slate-600 border border-slate-200 hover:text-[#e52521] hover:border-red-200'
+        }`}
+      >
+        <Truck className="w-4 h-4" />
+        <span>Consola de Tracking</span>
+      </button>
+    </nav>
   );
 };

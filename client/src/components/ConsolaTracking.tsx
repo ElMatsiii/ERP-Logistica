@@ -149,7 +149,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 animate-in fade-in duration-300">
       
       {/* Encabezado */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-slate-200 gap-4">
@@ -163,9 +163,6 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
             Consola de Tracking y Seguimiento
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Visualice el estado de los despachos emitidos y gestione la bitácora cronológica de eventos.
-          </p>
         </div>
 
         <button
@@ -257,12 +254,8 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
 
         </div>
 
-        {/* Resumen de resultados filtrados */}
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <span>
-            Mostrando <strong>{guias.length}</strong> guías de despacho registradas
-          </span>
-          {(busqueda || filtroTransportista || filtroEstado || filtroFecha) && (
+        {(busqueda || filtroTransportista || filtroEstado || filtroFecha) && (
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-end text-xs">
             <button
               onClick={() => {
                 setBusqueda('');
@@ -274,8 +267,8 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
             >
               Limpiar todos los filtros
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================

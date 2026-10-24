@@ -258,7 +258,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   const pesoMayorEsVolumetrico = pesoVolumetrico > dimensiones.peso_real_kg;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 animate-in fade-in duration-300">
       
       {/* Encabezado del Formulario */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between pb-6 border-b border-slate-200 gap-4">

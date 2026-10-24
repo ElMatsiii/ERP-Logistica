@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navbar } from './components/Navbar';
+import { Navbar, NavTabs } from './components/Navbar';
 import { EmisionGuia } from './components/EmisionGuia';
 import { ConsolaTracking } from './components/ConsolaTracking';
 import { GuiaDespacho } from './types';
@@ -23,7 +23,10 @@ export function App() {
   return (
     <div className="min-h-screen bg-slate-100/70 flex flex-col font-sans">
       {/* Navbar corporativo LesGo */}
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar />
+
+      {/* Pestañas de navegación */}
+      <NavTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Contenido principal según pestaña activa */}
       <main className="flex-1 pb-16">
