@@ -157,7 +157,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 bg-blue-600 rounded-full inline-block"></span>
             <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
-              Sprint 2 - Monitoreo y Trazabilidad
+              Monitoreo y Trazabilidad
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">

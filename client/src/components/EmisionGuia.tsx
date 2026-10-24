@@ -266,15 +266,12 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 bg-[#e52521] rounded-full inline-block"></span>
             <span className="text-xs font-bold uppercase tracking-wider text-[#e52521]">
-              Sprint 2 - Módulo Operativo
+              Módulo Operativo
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
             Emisión de Guía de Despacho
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Valida empaque con cubicación en tiempo real, asigna transportista y rebaja existencias de inventario.
-          </p>
         </div>
 
         <button
@@ -312,9 +309,6 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                 <h2 className="text-base font-bold text-slate-900">
                   Orden de Trabajo de Picking y Cliente
                 </h2>
-                <p className="text-xs text-slate-500">
-                  Seleccione la orden recolectada para validar el despacho.
-                </p>
               </div>
             </div>
 
@@ -338,9 +332,6 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                   </option>
                 ))}
               </select>
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                Total de órdenes disponibles en almacén: {ots.length}
-              </span>
             </div>
 
             {/* Datos del Cliente y Pedido */}
@@ -449,9 +440,6 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
               <h2 className="text-base font-bold text-slate-900">
                 Detalle del Bulto y Cubicación en Tiempo Real
               </h2>
-              <p className="text-xs text-slate-500">
-                Modifique las medidas del embalaje para calcular el peso volumétrico y el peso facturable.
-              </p>
             </div>
           </div>
 
@@ -534,15 +522,6 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                   <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">kg</span>
                 </div>
               </div>
-
-              <div className="col-span-2 sm:col-span-4 text-xs text-slate-400 flex items-center justify-between">
-                <span>
-                  Factor volumétrico aplicado: <strong className="text-slate-700">{factorVolumetrico}</strong> (según transportista)
-                </span>
-                <span>
-                  Fórmula: (L × A × An) ÷ {factorVolumetrico}
-                </span>
-              </div>
             </div>
 
             {/* Consola de Resultados de Cubicación en Vivo */}
@@ -553,9 +532,6 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                 <span className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
                   <Calculator className="w-3.5 h-3.5 text-[#ffcf00]" />
                   <span>Cálculo de Tarifación</span>
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-slate-300">
-                  DINÁMICO
                 </span>
               </div>
 
@@ -593,14 +569,9 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
 
               {/* Peso final a facturar */}
               <div className="pt-3 border-t border-slate-700/80 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-300 block font-medium">
-                    Peso a Cobrar (Facturable)
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    Max(Peso Real, Peso Volumétrico)
-                  </span>
-                </div>
+                <span className="text-xs text-slate-300 block font-medium">
+                  Peso a Cobrar (Facturable)
+                </span>
                 <div className="text-right">
                   <span className="text-2xl font-black font-mono text-[#ffcf00]">
                     {pesoCobrado} kg
@@ -624,9 +595,6 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
               <h2 className="text-base font-bold text-slate-900">
                 Selección de Transportista y Verificación de Cobertura
               </h2>
-              <p className="text-xs text-slate-500">
-                Elija la empresa logística para la comuna de destino y compruebe tarifas.
-              </p>
             </div>
           </div>
 
@@ -705,46 +673,42 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             </span>
             <span className="text-slate-400 font-mono">Formato único ERP LesGo</span>
           </div>
-        </div>
 
-        {/* ERROR DE VALIDACIÓN O EMISIÓN */}
-        {errorEmision && (
-          <div className="p-4 rounded-xl bg-red-50 border-2 border-red-300 text-red-900 text-sm flex items-start space-x-3 animate-in shake">
-            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">No fue posible emitir la guía de despacho</p>
-              <p className="text-xs text-red-800 mt-0.5">{errorEmision}</p>
+          {/* ERROR DE VALIDACIÓN O EMISIÓN */}
+          {errorEmision && (
+            <div className="mt-5 p-4 rounded-xl bg-red-50 border-2 border-red-300 text-red-900 text-sm flex items-start space-x-3 animate-in shake">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">No fue posible emitir la guía de despacho</p>
+                <p className="text-xs text-red-800 mt-0.5">{errorEmision}</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* BOTÓN PRINCIPAL DE EMISIÓN */}
-        <div className="flex flex-col sm:flex-row items-center justify-between pt-4 gap-4">
-          <div className="text-xs text-slate-500">
-            * Al emitir la guía se insertarán en una sola transacción: <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">log_guia_despacho</code>, <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">log_bulto</code>, <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">log_evento_tracking</code> y <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">inv_mov</code>.
+          {/* BOTÓN PRINCIPAL DE EMISIÓN */}
+          <div className="flex justify-end mt-5">
+            <button
+              type="submit"
+              disabled={!otEsCerrada || !tieneCobertura || emitirCargando}
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center space-x-2 ${
+                !otEsCerrada || !tieneCobertura || emitirCargando
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                  : 'bg-[#e52521] hover:bg-[#b91c1c] text-white hover:shadow-lg active:scale-95'
+              }`}
+            >
+              {emitirCargando ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Procesando Transacción...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Emitir guía y rebajar inventario</span>
+                </>
+              )}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={!otEsCerrada || !tieneCobertura || emitirCargando}
-            className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center space-x-2 ${
-              !otEsCerrada || !tieneCobertura || emitirCargando
-                ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                : 'bg-[#e52521] hover:bg-[#b91c1c] text-white hover:shadow-lg active:scale-95'
-            }`}
-          >
-            {emitirCargando ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Procesando Transacción...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4" />
-                <span>Emitir guía y rebajar inventario</span>
-              </>
-            )}
-          </button>
         </div>
 
       </form>

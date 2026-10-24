@@ -39,15 +39,10 @@ export function App() {
 
       {/* Footer corporativo */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span className="font-bold text-[#e52521]">LesGo ERP</span>
-            <span>—</span>
-            <span>Módulo de Logística y Transporte (Sprint 2 MVP)</span>
-          </div>
-          <div>
-            <span>Sistemas de Información II • Grupo 6 (Maximiliano Pizarro y equipo)</span>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center space-x-2">
+          <span className="font-bold text-[#e52521]">LesGo ERP</span>
+          <span>-</span>
+          <span>Sistemas de Información II</span>
         </div>
       </footer>
     </div>
