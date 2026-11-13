@@ -150,3 +150,62 @@ export interface CotizacionResponse {
   comuna_destino?: string;
   transportista_nombre?: string;
 }
+
+export interface DetalleOrdenCompra {
+  id: number;
+  id_oc: number;
+  id_producto: number;
+  sku?: string;
+  nombre_producto?: string;
+  cantidad_esperada: number;
+  peso_unitario_kg?: number;
+}
+
+export interface OrdenCompra {
+  id_oc: number;
+  proveedor: string;
+  estado: string;
+  fecha_emision?: string;
+  fecha_entrega_esperada?: string;
+  detalles: DetalleOrdenCompra[];
+}
+
+export interface LineaRecepcionInput {
+  id_producto: number;
+  cantidad_esperada: number;
+  cantidad_recibida: number;
+  cantidad_danada: number;
+  motivo_dano?: string | null;
+}
+
+export interface RegistrarRecepcionPayload {
+  id_oc: number;
+  id_empleado_receptor?: number;
+  observacion?: string;
+  lineas: LineaRecepcionInput[];
+}
+
+export interface DetalleRecepcion {
+  id: number;
+  recepcion_id: number;
+  id_producto: number;
+  cantidad_esperada: number;
+  cantidad_recibida: number;
+  cantidad_danada: number;
+  motivo_dano?: string | null;
+  sku?: string;
+  nombre_producto?: string;
+}
+
+export interface RecepcionRegistro {
+  id: number;
+  id_oc: number;
+  id_empleado_receptor: number;
+  nombre_empleado?: string;
+  fecha_recepcion: string;
+  estado: string;
+  observacion?: string;
+  proveedor?: string;
+  detalles: DetalleRecepcion[];
+}
+

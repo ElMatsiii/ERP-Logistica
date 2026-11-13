@@ -106,4 +106,51 @@ export class LogisticaController {
       res.status(500).json({ error: 'Error al registrar evento de tracking', detalle: error.message });
     }
   };
+
+  getComprasPendientes = async (req: Request, res: Response) => {
+    try {
+      const compras = await this.service.getComprasPendientes();
+      res.json(compras);
+    } catch (error: any) {
+      console.error('Error al obtener compras pendientes:', error);
+      res.status(500).json({ error: 'Error al consultar órdenes de compra', detalle: error.message });
+    }
+  };
+
+  getCompraById = async (req: Request, res: Response) => {
+    try {
+      const id = Number(req.params.id);
+      const compra = await this.service.getCompraById(id);
+      res.json(compra);
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+      console.error(`Error al obtener orden de compra ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Error al consultar orden de compra', detalle: error.message });
+    }
+  };
+
+  registrarRecepcion = async (req: Request, res: Response) => {
+    try {
+      const resultado = await this.service.registrarRecepcion(req.body);
+      res.status(201).json(resultado);
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+      console.error('Error al registrar recepción en muelle:', error);
+      res.status(500).json({ error: 'Error transaccional al registrar recepción', detalle: error.message });
+    }
+  };
+
+  getHistorialRecepciones = async (req: Request, res: Response) => {
+    try {
+      const recepciones = await this.service.getHistorialRecepciones();
+      res.json(recepciones);
+    } catch (error: any) {
+      console.error('Error al obtener historial de recepciones:', error);
+      res.status(500).json({ error: 'Error al consultar historial de recepciones', detalle: error.message });
+    }
+  };
 }

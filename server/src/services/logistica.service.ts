@@ -2,6 +2,7 @@ import {
   LogisticaRepository,
   FiltrosTracking,
   EmisionGuiaData,
+  RecepcionData,
 } from '../repositories/logistica.repository.js';
 import {
   cubicarBultos,
@@ -9,7 +10,9 @@ import {
   generarNumeroSeguimiento,
   generarIdGuia,
   validarDimensionesBulto,
+  evaluarRecepcionOc,
   BultoInput,
+  LineaRecepcionInput,
 } from '../domain/cubicacion.js';
 import { EstadoOT } from '@prisma/client';
 
@@ -35,6 +38,13 @@ export interface CotizarRequest {
   transportista_id: number;
   servicio_id: number;
   bultos: BultoInput[];
+}
+
+export interface RegistrarRecepcionRequest {
+  id_oc: number;
+  id_empleado_receptor?: number;
+  observacion?: string;
+  lineas: LineaRecepcionInput[];
 }
 
 export class LogisticaService {
@@ -328,5 +338,88 @@ export class LogisticaService {
       usuarioResponsable || 'M. Pizarro',
       observacion ? observacion.trim() : 'Actualización de estado en consola de tracking'
     );
+  }
+
+  /**
+   * Obtiene la lista de órdenes de compra pendientes de recepción en muelle.
+   */
+  async getComprasPendientes() {
+    return this.repository.getComprasPendientes();
+  }
+
+  /**
+   * Obtiene el detalle de una orden de compra por su ID.
+   */
+  async getCompraById(id: number) {
+    const oc = await this.repository.getCompraById(id);
+    if (!oc) {
+      throw new ValidationError(`La orden de compra ${id} no existe`, 404);
+    }
+    return oc;
+  }
+
+  /**
+   * Registra la recepción física en muelle de una Orden de Compra (HU-06).
+   * Aplica la 6ta validación de negocio:
+   * cantidad_danada <= cantidad_recibida <= cantidad_esperada.
+   * Dispara el ingreso automático como ENTRADA en inventario por las unidades aptas.
+   */
+  async registrarRecepcion(input: RegistrarRecepcionRequest) {
+    if (!input.id_oc) {
+      throw new ValidationError('El ID de la orden de compra es obligatorio.', 400);
+    }
+    if (!input.lineas || input.lineas.length === 0) {
+      throw new ValidationError('Debe ingresar al menos una línea de producto para la recepción.', 400);
+    }
+
+    // Verificar que la OC exista
+    const oc = await this.repository.getCompraById(input.id_oc);
+    if (!oc) {
+      throw new ValidationError(`La orden de compra #${input.id_oc} no existe.`, 404);
+    }
+
+    // Validación 6: Evaluar cantidades con la lógica pura de dominio
+    let resultadoDominio;
+    try {
+      resultadoDominio = evaluarRecepcionOc(input.lineas);
+    } catch (err: any) {
+      throw new ValidationError(err.message || 'Error en las cantidades de recepción.', 422);
+    }
+
+    const recepcionData: RecepcionData = {
+      id_oc: input.id_oc,
+      id_empleado_receptor: input.id_empleado_receptor || 12,
+      estado: resultadoDominio.estado_recepcion,
+      observacion: input.observacion || `Recepción en muelle ${resultadoDominio.estado_recepcion}`,
+      detalles: input.lineas.map((l) => ({
+        id_producto: l.id_producto,
+        cantidad_esperada: l.cantidad_esperada,
+        cantidad_recibida: l.cantidad_recibida,
+        cantidad_danada: l.cantidad_danada,
+        motivo_dano: l.motivo_dano || null,
+      })),
+      movimientos_entrada: resultadoDominio.movimientos_entrada,
+    };
+
+    const recepcionRegistrada = await this.repository.registrarRecepcionTransaccional(recepcionData);
+
+    return {
+      mensaje: 'Recepción en muelle confirmada e ingreso de existencias a inventario registrado.',
+      recepcion: recepcionRegistrada,
+      resumen: {
+        total_esperado: resultadoDominio.total_esperado,
+        total_recibido: resultadoDominio.total_recibido,
+        total_danado: resultadoDominio.total_danado,
+        total_apto_inventario: resultadoDominio.total_apto_inventario,
+        estado_recepcion: resultadoDominio.estado_recepcion,
+      },
+    };
+  }
+
+  /**
+   * Consulta el historial de recepciones en muelle.
+   */
+  async getHistorialRecepciones() {
+    return this.repository.getHistorialRecepciones();
   }
 }

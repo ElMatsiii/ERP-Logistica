@@ -1,9 +1,9 @@
 import React from 'react';
-import { Package, Truck, UserCircle, ShieldCheck } from 'lucide-react';
+import { Package, Truck, UserCircle, ShieldCheck, Inbox } from 'lucide-react';
 
 interface NavTabsProps {
-  activeTab: 'emision' | 'tracking';
-  setActiveTab: (tab: 'emision' | 'tracking') => void;
+  activeTab: 'emision' | 'tracking' | 'recepcion';
+  setActiveTab: (tab: 'emision' | 'tracking' | 'recepcion') => void;
 }
 
 export const Navbar: React.FC = () => {
@@ -116,6 +116,18 @@ export const NavTabs: React.FC<NavTabsProps> = ({ activeTab, setActiveTab }) => 
       >
         <Truck className="w-4 h-4" />
         <span>Consola de Tracking</span>
+      </button>
+
+      <button
+        onClick={() => setActiveTab('recepcion')}
+        className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+          activeTab === 'recepcion'
+            ? 'bg-[#e52521] text-white shadow-md'
+            : 'bg-white text-slate-600 border border-slate-200 hover:text-[#e52521] hover:border-red-200'
+        }`}
+      >
+        <Inbox className="w-4 h-4" />
+        <span>Recepción en Muelle</span>
       </button>
     </nav>
   );

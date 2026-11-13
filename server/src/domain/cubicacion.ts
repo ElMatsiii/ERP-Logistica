@@ -288,6 +288,7 @@ export interface LineaRecepcionInput {
   cantidad_esperada: number;
   cantidad_recibida: number;
   cantidad_danada: number;
+  motivo_dano?: string | null;
 }
 
 export interface ResultadoRecepcionOc {

@@ -4,6 +4,9 @@ import {
   GuiaDespacho,
   BultoInput,
   CotizacionResponse,
+  OrdenCompra,
+  RegistrarRecepcionPayload,
+  RecepcionRegistro,
 } from '../types';
 
 const API_BASE = '/api/logistica';
@@ -124,3 +127,51 @@ export async function registrarEventoTracking(
 
   return data;
 }
+
+export async function fetchComprasPendientes(): Promise<OrdenCompra[]> {
+  const res = await fetch(`${API_BASE}/compras-pendientes`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al obtener órdenes de compra pendientes');
+  }
+  return res.json();
+}
+
+export async function fetchCompraById(id: number): Promise<OrdenCompra> {
+  const res = await fetch(`${API_BASE}/compras/${id}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Error al obtener orden de compra #${id}`);
+  }
+  return res.json();
+}
+
+export async function registrarRecepcionMuelle(
+  payload: RegistrarRecepcionPayload
+): Promise<{ mensaje: string; recepcion: RecepcionRegistro; resumen: any }> {
+  const res = await fetch(`${API_BASE}/recepciones`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const error = new Error(data.error || 'Error al registrar recepción en muelle');
+    (error as any).status = res.status;
+    throw error;
+  }
+
+  return data;
+}
+
+export async function fetchHistorialRecepciones(): Promise<RecepcionRegistro[]> {
+  const res = await fetch(`${API_BASE}/recepciones`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al consultar historial de recepciones');
+  }
+  return res.json();
+}
+

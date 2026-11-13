@@ -348,3 +348,66 @@ export const mockInvMov: any[] = [
   { id: 1, id_producto: 75192, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52301 / OT-4091', fecha: new Date().toISOString() },
   { id: 2, id_producto: 75288, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date().toISOString() },
 ];
+
+export const mockComprasOc: any[] = [
+  {
+    id_oc: 8001,
+    proveedor: 'LEGO System A/S (Billund, Dinamarca)',
+    estado: 'EMITIDA',
+    fecha_emision: '2026-11-01T10:00:00Z',
+    fecha_entrega_esperada: '2026-11-15T00:00:00Z',
+    detalles: [
+      { id: 1, id_oc: 8001, id_producto: 75192, sku: '75192', nombre_producto: 'Millennium Falcon (Star Wars UCS)', cantidad_esperada: 10, peso_unitario_kg: 13.2 },
+      { id: 2, id_oc: 8001, id_producto: 75288, sku: '75288', nombre_producto: 'AT-AT Walker (Star Wars)', cantidad_esperada: 15, peso_unitario_kg: 4.9 },
+    ],
+  },
+  {
+    id_oc: 8002,
+    proveedor: 'LEGO Distribution LATAM (México)',
+    estado: 'EMITIDA',
+    fecha_emision: '2026-11-03T11:30:00Z',
+    fecha_entrega_esperada: '2026-11-16T00:00:00Z',
+    detalles: [
+      { id: 3, id_oc: 8002, id_producto: 10294, sku: '10294', nombre_producto: 'Titanic (LEGO Icons)', cantidad_esperada: 8, peso_unitario_kg: 14.5 },
+      { id: 4, id_oc: 8002, id_producto: 76240, sku: '76240', nombre_producto: 'Batmobile Tumbler (DC)', cantidad_esperada: 12, peso_unitario_kg: 4.0 },
+    ],
+  },
+  {
+    id_oc: 8004,
+    proveedor: 'Importadora Bricks Chile SpA',
+    estado: 'EMITIDA',
+    fecha_emision: '2026-11-05T09:00:00Z',
+    fecha_entrega_esperada: '2026-11-18T00:00:00Z',
+    detalles: [
+      { id: 5, id_oc: 8004, id_producto: 71741, sku: '71741', nombre_producto: 'Ninjago City Gardens', cantidad_esperada: 14, peso_unitario_kg: 5.6 },
+      { id: 6, id_oc: 8004, id_producto: 42143, sku: '42143', nombre_producto: 'Ferrari Daytona SP3 (Technic)', cantidad_esperada: 6, peso_unitario_kg: 6.2 },
+    ],
+  },
+  {
+    id_oc: 8005,
+    proveedor: 'Distribuidora Juguetes del Norte',
+    estado: 'EMITIDA',
+    fecha_emision: '2026-11-08T14:15:00Z',
+    fecha_entrega_esperada: '2026-11-20T00:00:00Z',
+    detalles: [
+      { id: 7, id_oc: 8005, id_producto: 10305, sku: '10305', nombre_producto: "Lion Knights' Castle (Icons)", cantidad_esperada: 10, peso_unitario_kg: 7.2 },
+    ],
+  },
+];
+
+export const mockRecepciones: any[] = [
+  {
+    id: 1,
+    id_oc: 8003,
+    id_empleado_receptor: 12,
+    nombre_empleado: 'P. Pérez (Operador Bodega)',
+    fecha_recepcion: new Date(Date.now() - 3600000 * 24 * 5).toISOString(),
+    estado: 'CONFORME',
+    observacion: 'Descarga completa en Muelle 1 sin cajas dañadas.',
+    proveedor: 'LEGO System A/S (Billund, Dinamarca)',
+    detalles: [
+      { id: 1, recepcion_id: 1, id_producto: 10294, sku: '10294', nombre_producto: 'Titanic (LEGO Icons)', cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
+    ],
+  },
+];
+

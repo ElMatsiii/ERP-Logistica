@@ -9,6 +9,8 @@ import {
   mockGuias,
   mockInvMov,
   mockDirecciones,
+  mockComprasOc,
+  mockRecepciones,
 } from './fallbackData.js';
 
 export interface FiltrosTracking {
@@ -45,10 +47,33 @@ export interface EmisionGuiaData {
   }>;
 }
 
+export interface RecepcionItemData {
+  id_producto: number;
+  cantidad_esperada: number;
+  cantidad_recibida: number;
+  cantidad_danada: number;
+  motivo_dano?: string | null;
+}
+
+export interface RecepcionData {
+  id_oc: number;
+  id_empleado_receptor: number;
+  estado: string;
+  observacion?: string;
+  detalles: RecepcionItemData[];
+  movimientos_entrada: Array<{
+    id_producto: number;
+    tipo: 'ENTRADA';
+    cantidad: number;
+  }>;
+}
+
 export class LogisticaRepository {
   private fallbackOts = [...mockOts];
   private fallbackGuias = [...mockGuias];
   private fallbackInvMov = [...mockInvMov];
+  private fallbackCompras = [...mockComprasOc];
+  private fallbackRecepciones = [...mockRecepciones];
 
   /**
    * Obtiene la lista de órdenes de trabajo disponibles (picking) con datos de cliente y dirección.
@@ -557,6 +582,188 @@ export class LogisticaRepository {
       guia.estado_actual = estado;
 
       return { nuevoEvento, guia };
+    }
+  }
+
+  /**
+   * Obtiene la lista de órdenes de compra pendientes o en proceso de recepción en muelle.
+   */
+  async getComprasPendientes() {
+    try {
+      const ocs = await prisma.comprasOc.findMany({
+        include: {
+          detalles: true,
+        },
+        orderBy: { id_oc: 'desc' },
+      });
+
+      // Mapear con datos de productos para nombres y SKUs
+      const prods = await prisma.invProducto.findMany();
+      const prodMap = new Map<number, any>(prods.map((p) => [p.id_producto, p]));
+
+      return ocs.map((oc: any) => ({
+        ...oc,
+        detalles: (oc.detalles || []).map((d: any) => {
+          const prod = prodMap.get(d.id_producto);
+          return {
+            ...d,
+            sku: prod ? prod.sku : `LEGO-${d.id_producto}`,
+            nombre_producto: prod ? prod.nombre : `Set LEGO #${d.id_producto}`,
+            peso_unitario_kg: prod ? Number(prod.peso_unitario_kg || 2.0) : 2.0,
+          };
+        }),
+      }));
+    } catch (err) {
+      return this.fallbackCompras;
+    }
+  }
+
+  /**
+   * Obtiene una orden de compra específica por su ID.
+   */
+  async getCompraById(id_oc: number) {
+    try {
+      const oc = await prisma.comprasOc.findUnique({
+        where: { id_oc },
+        include: { detalles: true },
+      });
+      if (!oc) {
+        return this.fallbackCompras.find((c) => c.id_oc === id_oc) || null;
+      }
+      const prods = await prisma.invProducto.findMany();
+      const prodMap = new Map<number, any>(prods.map((p) => [p.id_producto, p]));
+      return {
+        ...oc,
+        detalles: (oc.detalles || []).map((d: any) => {
+          const prod = prodMap.get(d.id_producto);
+          return {
+            ...d,
+            sku: prod ? prod.sku : `LEGO-${d.id_producto}`,
+            nombre_producto: prod ? prod.nombre : `Set LEGO #${d.id_producto}`,
+            peso_unitario_kg: prod ? Number(prod.peso_unitario_kg || 2.0) : 2.0,
+          };
+        }),
+      };
+    } catch (err) {
+      return this.fallbackCompras.find((c) => c.id_oc === id_oc) || null;
+    }
+  }
+
+  /**
+   * Registra una recepción en muelle en una transacción atómica:
+   * 1. Inserta `log_recepcion`
+   * 2. Inserta `log_recepcion_detalle` con conteo de unidades recibidas vs dañadas
+   * 3. Inserta movimientos de tipo 'ENTRADA' en `inv_mov` solo por las unidades aptas
+   * 4. Actualiza el estado de la Orden de Compra
+   */
+  async registrarRecepcionTransaccional(data: RecepcionData) {
+    try {
+      return await prisma.$transaction(async (tx: any) => {
+        // 1. Crear acta de recepción
+        const recepcionCreada = await tx.log_recepcion.create({
+          data: {
+            id_oc: data.id_oc,
+            id_empleado_receptor: data.id_empleado_receptor,
+            estado: data.estado,
+            observacion: data.observacion || 'Recepción en muelle conforme',
+          },
+        });
+
+        // 2. Crear líneas de recepción
+        for (const det of data.detalles) {
+          await tx.log_recepcion_detalle.create({
+            data: {
+              recepcion_id: recepcionCreada.id,
+              id_producto: det.id_producto,
+              cantidad_esperada: det.cantidad_esperada,
+              cantidad_recibida: det.cantidad_recibida,
+              cantidad_danada: det.cantidad_danada,
+              motivo_dano: det.motivo_dano || null,
+            },
+          });
+        }
+
+        // 3. Registrar movimientos de entrada en inventario por las unidades aptas
+        for (const mov of data.movimientos_entrada) {
+          await tx.inv_mov.create({
+            data: {
+              id_producto: mov.id_producto,
+              tipo: 'ENTRADA',
+              cantidad: mov.cantidad,
+              referencia_origen: `RECEPCION #${recepcionCreada.id} / OC #${data.id_oc}`,
+              id_usuario: data.id_empleado_receptor,
+            },
+          });
+        }
+
+        // 4. Actualizar estado de la Orden de Compra
+        await tx.comprasOc.update({
+          where: { id_oc: data.id_oc },
+          data: {
+            estado: data.estado === 'CONFORME' ? 'RECIBIDA' : 'PARCIAL',
+          },
+        });
+
+        // Retornar la recepción con sus líneas
+        return tx.log_recepcion.findUnique({
+          where: { id: recepcionCreada.id },
+          include: { detalles: true },
+        });
+      });
+    } catch (err) {
+      // Fallback en memoria si la BD no está disponible
+      const nuevaRecepcion = {
+        id: this.fallbackRecepciones.length + 1,
+        id_oc: data.id_oc,
+        id_empleado_receptor: data.id_empleado_receptor,
+        nombre_empleado: 'P. Pérez (Operador Bodega)',
+        fecha_recepcion: new Date().toISOString(),
+        estado: data.estado,
+        observacion: data.observacion || 'Recepción en muelle registrada en fallback',
+        detalles: data.detalles.map((d, idx) => ({
+          id: Date.now() + idx,
+          recepcion_id: this.fallbackRecepciones.length + 1,
+          ...d,
+        })),
+      };
+
+      this.fallbackRecepciones.unshift(nuevaRecepcion);
+
+      // Actualizar estado en fallback compras
+      const oc = this.fallbackCompras.find((c) => c.id_oc === data.id_oc);
+      if (oc) {
+        oc.estado = data.estado === 'CONFORME' ? 'RECIBIDA' : 'PARCIAL';
+      }
+
+      // Registrar entradas en fallback inventario
+      for (const mov of data.movimientos_entrada) {
+        this.fallbackInvMov.push({
+          id: Date.now(),
+          id_producto: mov.id_producto,
+          tipo: 'ENTRADA',
+          cantidad: mov.cantidad,
+          referencia_origen: `RECEPCION #${nuevaRecepcion.id} / OC #${data.id_oc}`,
+          fecha: new Date().toISOString(),
+        });
+      }
+
+      return nuevaRecepcion;
+    }
+  }
+
+  /**
+   * Consulta el historial de recepciones realizadas en muelle.
+   */
+  async getHistorialRecepciones() {
+    try {
+      return await prisma.log_recepcion.findMany({
+        include: {
+          detalles: true,
+        },
+        orderBy: { fecha_recepcion: 'desc' },
+      });
+    } catch (err) {
+      return this.fallbackRecepciones;
     }
   }
 }

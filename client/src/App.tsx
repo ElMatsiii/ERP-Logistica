@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Navbar, NavTabs } from './components/Navbar';
 import { EmisionGuia } from './components/EmisionGuia';
 import { ConsolaTracking } from './components/ConsolaTracking';
+import { RecepcionMuelle } from './components/RecepcionMuelle';
 import { GuiaDespacho } from './types';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'emision' | 'tracking'>('emision');
+  const [activeTab, setActiveTab] = useState<'emision' | 'tracking' | 'recepcion'>('emision');
   const [trackingSearch, setTrackingSearch] = useState<string>('');
 
   const handleGuiaEmitida = (guia: GuiaDespacho) => {
@@ -35,8 +36,10 @@ export function App() {
             onGuiaEmitida={handleGuiaEmitida}
             onGoToTracking={handleGoToTracking}
           />
-        ) : (
+        ) : activeTab === 'tracking' ? (
           <ConsolaTracking initialSearch={trackingSearch} />
+        ) : (
+          <RecepcionMuelle />
         )}
       </main>
 
