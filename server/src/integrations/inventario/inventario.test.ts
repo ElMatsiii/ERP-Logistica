@@ -187,9 +187,11 @@ describe('Integración Inventario - cliente HTTP', () => {
 describe('Integración Inventario - cliente simulado', () => {
   it('entrega peso y medidas de los productos de prueba; 404 si no existe', async () => {
     const sim = new ClienteInventarioSimulado();
-    const titanic = await sim.obtenerProducto(10294);
-    assert.equal(titanic.peso_unitario_kg, 14.5);
-    const err = await capturar(sim.obtenerProducto(1));
+    // Mismos IDs y medidas que el maestro real de Inventario (Titanic = 112)
+    const titanic = await sim.obtenerProducto(112);
+    assert.equal(titanic.sku, '10294-1');
+    assert.equal(titanic.peso_unitario_kg, 10.2);
+    const err = await capturar(sim.obtenerProducto(99999));
     assert.equal(err.tipo, 'NO_ENCONTRADO');
   });
 

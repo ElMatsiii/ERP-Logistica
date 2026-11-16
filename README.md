@@ -62,6 +62,8 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
 4. **Cálculo de Cubicación Volumétrica**:
    - Peso Volumétrico = $\frac{\text{Largo} \times \text{Alto} \times \text{Ancho}}{\text{Factor Volumétrico}}$ (default 5000 o según transportista).
    - Peso a Cobrar = $\max(\text{Peso Real}, \text{Peso Volumétrico})$.
+   - El **empaque sugerido** usa el peso y las medidas de cada set desde el maestro de Inventario (`GET /productos/:id`, guardado 5 minutos). En una OT `PARCIAL` se considera solo lo recolectado. Si Inventario no entrega algún producto, la OT lo informa en `fichas_inventario` y la pantalla avisa que el empaque es estimado.
+   - Los IDs de producto son los de Inventario (`inv_producto.id_producto`), no el número de set; el SKU (`10294-1`) es el número de set.
 5. **Transaccionalidad y Confirmación de Stock con Inventario**:
    - Antes de crear la guía se consulta la reserva del pedido en Inventario (`GET /reservas`): sin reserva responde `HTTP 422`, si no está `PENDIENTE` responde `HTTP 409` y si Inventario no responde, `HTTP 503`. En esos casos no se crea nada.
    - En una única transacción Prisma `$transaction` se crean la guía (en `Pendiente de stock`), los bultos y el evento inicial en bitácora.

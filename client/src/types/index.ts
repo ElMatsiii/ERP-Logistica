@@ -75,6 +75,12 @@ export interface OTPicking {
     ancho_cm: number;
     peso_real_kg: number;
   };
+  /** Si Inventario entregó peso y medidas de todos los productos (si no, el empaque es estimado) */
+  fichas_inventario?: {
+    completas: boolean;
+    faltantes: number[];
+    error?: string;
+  };
 }
 
 export interface Servicio {
@@ -170,10 +176,11 @@ export interface DetalleOrdenCompra {
   id: number;
   id_oc: number;
   id_producto: number;
-  sku?: string;
+  /** Desde el maestro de Inventario; null si Inventario no tiene el producto */
+  sku?: string | null;
   nombre_producto?: string;
   cantidad_esperada: number;
-  peso_unitario_kg?: number;
+  peso_unitario_kg?: number | null;
 }
 
 export interface OrdenCompra {

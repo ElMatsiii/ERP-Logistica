@@ -142,7 +142,7 @@ export const mockOts: any[] = [
     direccion: mockDirecciones[0],
     fecha_creacion: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
     detalles: [
-      { id: 1, ot_id: 'OT-4091', id_producto: 75192, sku: 'LEGO-SW-75192', nombre_producto: 'LEGO Star Wars Millennium Falcon UCS', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 13.2, largo_cm: 53, alto_cm: 46, ancho_cm: 38 },
+      { id: 1, ot_id: 'OT-4091', id_producto: 11, sku: '75419-1', nombre_producto: 'Death Star', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 10.13, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
     ],
   },
   {
@@ -158,8 +158,8 @@ export const mockOts: any[] = [
     direccion: mockDirecciones[1],
     fecha_creacion: new Date(Date.now() - 3600000 * 24 * 2.5).toISOString(),
     detalles: [
-      { id: 2, ot_id: 'OT-4092', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.1, largo_cm: 48, alto_cm: 37.8, ancho_cm: 9.4 },
-      { id: 3, ot_id: 'OT-4092', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45, alto_cm: 30, ancho_cm: 15 },
+      { id: 2, ot_id: 'OT-4092', id_producto: 12, sku: '75313-1', nombre_producto: 'AT-AT', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 7.66, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+      { id: 3, ot_id: 'OT-4092', id_producto: 32, sku: '76210-1', nombre_producto: 'Hulkbuster', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 4.65, largo_cm: 58.0, alto_cm: 12.0, ancho_cm: 48.0 },
     ],
   },
   {
@@ -175,7 +175,7 @@ export const mockOts: any[] = [
     direccion: mockDirecciones[2],
     fecha_creacion: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
     detalles: [
-      { id: 4, ot_id: 'OT-4093', id_producto: 71741, sku: 'LEGO-NJ-71741', nombre_producto: 'LEGO Ninjago City Gardens', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 5.6, largo_cm: 58.2, alto_cm: 48, ancho_cm: 17 },
+      { id: 4, ot_id: 'OT-4093', id_producto: 42, sku: '71741-1', nombre_producto: 'NINJAGO City Gardens', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 6.48, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
     ],
   },
   {
@@ -191,7 +191,7 @@ export const mockOts: any[] = [
     direccion: mockDirecciones[4],
     fecha_creacion: new Date(Date.now() - 3600000 * 24 * 1.5).toISOString(),
     detalles: [
-      { id: 5, ot_id: 'OT-4094', id_producto: 10294, sku: 'LEGO-IC-10294', nombre_producto: 'LEGO Icons Titanic (9090 piezas)', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 14.5, largo_cm: 60, alto_cm: 50, ancho_cm: 40 },
+      { id: 5, ot_id: 'OT-4094', id_producto: 112, sku: '10294-1', nombre_producto: 'Titanic', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 10.2, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
     ],
   },
   {
@@ -207,7 +207,7 @@ export const mockOts: any[] = [
     direccion: mockDirecciones[3],
     fecha_creacion: new Date(Date.now() - 3600000 * 12).toISOString(),
     detalles: [
-      { id: 8, ot_id: 'OT-4097', id_producto: 10295, sku: 'LEGO-IC-10295', nombre_producto: 'LEGO Icons Porsche 911 Turbo & Targa', cant_solicitada: 2, cant_recolectada: 0, peso_unitario_kg: 1.8, largo_cm: 48, alto_cm: 28.2, ancho_cm: 11.8 },
+      { id: 8, ot_id: 'OT-4097', id_producto: 72, sku: '42172-1', nombre_producto: 'McLaren P1', cant_solicitada: 2, cant_recolectada: 0, peso_unitario_kg: 4.48, largo_cm: 58.0, alto_cm: 12.0, ancho_cm: 48.0 },
     ],
   },
   {
@@ -223,7 +223,7 @@ export const mockOts: any[] = [
     direccion: mockDirecciones[5],
     fecha_creacion: new Date(Date.now() - 3600000 * 8).toISOString(),
     detalles: [
-      { id: 9, ot_id: 'OT-4098', id_producto: 10278, sku: 'LEGO-MD-10278', nombre_producto: 'LEGO Modular Police Station', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.9, largo_cm: 58, alto_cm: 37, ancho_cm: 11 },
+      { id: 9, ot_id: 'OT-4098', id_producto: 1, sku: '60380-1', nombre_producto: 'Downtown', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.41, largo_cm: 48.0, alto_cm: 9.0, ancho_cm: 38.0 },
     ],
   },
   {
@@ -239,7 +239,7 @@ export const mockOts: any[] = [
     direccion: mockDirecciones[7],
     fecha_creacion: new Date(Date.now() - 3600000 * 6).toISOString(),
     detalles: [
-      { id: 13, ot_id: 'OT-4101', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45, alto_cm: 30, ancho_cm: 15 },
+      { id: 13, ot_id: 'OT-4101', id_producto: 32, sku: '76210-1', nombre_producto: 'Hulkbuster', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 4.65, largo_cm: 58.0, alto_cm: 12.0, ancho_cm: 48.0 },
     ],
   },
 ];
@@ -345,8 +345,8 @@ export const mockGuias: any[] = [
 ];
 
 export const mockInvMov: any[] = [
-  { id: 1, id_producto: 75192, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52301 / OT-4091', fecha: new Date().toISOString() },
-  { id: 2, id_producto: 75288, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date().toISOString() },
+  { id: 1, id_producto: 11, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52301 / OT-4091', fecha: new Date().toISOString() },
+  { id: 2, id_producto: 12, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date().toISOString() },
 ];
 
 export const mockComprasOc: any[] = [
@@ -358,8 +358,8 @@ export const mockComprasOc: any[] = [
     fecha_emision: '2026-11-01T10:00:00Z',
     fecha_entrega_esperada: '2026-11-15T00:00:00Z',
     detalles: [
-      { id: 1, id_oc: 8001, id_producto: 75192, sku: '75192', nombre_producto: 'Millennium Falcon (Star Wars UCS)', cantidad_esperada: 10, peso_unitario_kg: 13.2 },
-      { id: 2, id_oc: 8001, id_producto: 75288, sku: '75288', nombre_producto: 'AT-AT Walker (Star Wars)', cantidad_esperada: 15, peso_unitario_kg: 4.9 },
+      { id: 1, id_oc: 8001, id_producto: 11, sku: '75419-1', nombre_producto: 'Death Star', cantidad_esperada: 10, peso_unitario_kg: 10.13 },
+      { id: 2, id_oc: 8001, id_producto: 12, sku: '75313-1', nombre_producto: 'AT-AT', cantidad_esperada: 15, peso_unitario_kg: 7.66 },
     ],
   },
   {
@@ -370,8 +370,8 @@ export const mockComprasOc: any[] = [
     fecha_emision: '2026-11-03T11:30:00Z',
     fecha_entrega_esperada: '2026-11-16T00:00:00Z',
     detalles: [
-      { id: 3, id_oc: 8002, id_producto: 10294, sku: '10294', nombre_producto: 'Titanic (LEGO Icons)', cantidad_esperada: 8, peso_unitario_kg: 14.5 },
-      { id: 4, id_oc: 8002, id_producto: 76240, sku: '76240', nombre_producto: 'Batmobile Tumbler (DC)', cantidad_esperada: 12, peso_unitario_kg: 4.0 },
+      { id: 3, id_oc: 8002, id_producto: 112, sku: '10294-1', nombre_producto: 'Titanic', cantidad_esperada: 8, peso_unitario_kg: 10.2 },
+      { id: 4, id_oc: 8002, id_producto: 32, sku: '76210-1', nombre_producto: 'Hulkbuster', cantidad_esperada: 12, peso_unitario_kg: 4.65 },
     ],
   },
   {
@@ -382,8 +382,8 @@ export const mockComprasOc: any[] = [
     fecha_emision: '2026-11-05T09:00:00Z',
     fecha_entrega_esperada: '2026-11-18T00:00:00Z',
     detalles: [
-      { id: 5, id_oc: 8004, id_producto: 71741, sku: '71741', nombre_producto: 'Ninjago City Gardens', cantidad_esperada: 14, peso_unitario_kg: 5.6 },
-      { id: 6, id_oc: 8004, id_producto: 42143, sku: '42143', nombre_producto: 'Ferrari Daytona SP3 (Technic)', cantidad_esperada: 6, peso_unitario_kg: 6.2 },
+      { id: 5, id_oc: 8004, id_producto: 42, sku: '71741-1', nombre_producto: 'NINJAGO City Gardens', cantidad_esperada: 14, peso_unitario_kg: 6.48 },
+      { id: 6, id_oc: 8004, id_producto: 74, sku: '42143-1', nombre_producto: 'Ferrari Daytona SP3', cantidad_esperada: 6, peso_unitario_kg: 4.36 },
     ],
   },
   {
@@ -394,7 +394,7 @@ export const mockComprasOc: any[] = [
     fecha_emision: '2026-11-08T14:15:00Z',
     fecha_entrega_esperada: '2026-11-20T00:00:00Z',
     detalles: [
-      { id: 7, id_oc: 8005, id_producto: 10305, sku: '10305', nombre_producto: "Lion Knights' Castle (Icons)", cantidad_esperada: 10, peso_unitario_kg: 7.2 },
+      { id: 7, id_oc: 8005, id_producto: 119, sku: '10305-1', nombre_producto: "Lion Knights' Castle", cantidad_esperada: 10, peso_unitario_kg: 5.17 },
     ],
   },
 ];
@@ -410,7 +410,7 @@ export const mockRecepciones: any[] = [
     observacion: 'Descarga completa en Muelle 1 sin cajas dañadas.',
     proveedor: 'LEGO System A/S (Billund, Dinamarca)',
     detalles: [
-      { id: 1, recepcion_id: 1, id_producto: 10294, sku: '10294', nombre_producto: 'Titanic (LEGO Icons)', cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
+      { id: 1, recepcion_id: 1, id_producto: 112, sku: '10294-1', nombre_producto: 'Titanic', cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
     ],
   },
 ];

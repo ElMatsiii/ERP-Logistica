@@ -165,32 +165,6 @@ export class LogisticaRepository {
     }
   }
 
-  /**
-   * Peso y medidas de los productos, que viven en el maestro de Inventario.
-   * Por ahora se leen de test_log_inv_producto; se reemplaza por GET /productos/:id de Inventario.
-   */
-  async getFichasProducto(ids: number[]) {
-    const fichas = new Map<
-      number,
-      { peso_unitario_kg: number | null; largo_cm: number | null; alto_cm: number | null; ancho_cm: number | null }
-    >();
-    if (ids.length === 0) return fichas;
-    const aNumero = (v: Prisma.Decimal | null) => (v === null ? null : Number(v));
-    try {
-      const productos = await prisma.invProducto.findMany({ where: { id_producto: { in: ids } } });
-      for (const p of productos) {
-        fichas.set(p.id_producto, {
-          peso_unitario_kg: aNumero(p.peso_unitario_kg),
-          largo_cm: aNumero(p.largo_cm),
-          alto_cm: aNumero(p.alto_cm),
-          ancho_cm: aNumero(p.ancho_cm),
-        });
-      }
-    } catch (err) {
-      // Sin BD: las OT de fallbackData ya traen sus medidas.
-    }
-    return fichas;
-  }
 
   /**
    * Verifica si existe cobertura vigente para un servicio y comuna.
@@ -631,54 +605,25 @@ export class LogisticaRepository {
         orderBy: { id_oc: 'desc' },
       });
 
-      // Mapear con datos de productos para nombres y SKUs
-      const prods = await prisma.invProducto.findMany();
-      const prodMap = new Map<number, any>(prods.map((p) => [p.id_producto, p]));
-
-      return ocs.map((oc: any) => ({
-        ...oc,
-        detalles: (oc.detalles || []).map((d: any) => {
-          const prod = prodMap.get(d.id_producto);
-          return {
-            ...d,
-            sku: prod ? prod.sku : `LEGO-${d.id_producto}`,
-            nombre_producto: prod ? prod.nombre : `Set LEGO #${d.id_producto}`,
-            peso_unitario_kg: prod ? Number(prod.peso_unitario_kg || 2.0) : 2.0,
-          };
-        }),
-      }));
+      // SKU, nombre y peso de cada línea los completa el servicio desde Inventario
+      return ocs;
     } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
       return this.fallbackCompras;
     }
   }
 
   /**
-   * Obtiene una orden de compra específica por su ID.
+   * Obtiene una orden de compra específica por su ID (null si no existe).
    */
   async getCompraById(id_oc: number) {
     try {
-      const oc = await prisma.comprasOc.findUnique({
+      return await prisma.comprasOc.findUnique({
         where: { id_oc },
         include: { detalles: true },
       });
-      if (!oc) {
-        return this.fallbackCompras.find((c) => c.id_oc === id_oc) || null;
-      }
-      const prods = await prisma.invProducto.findMany();
-      const prodMap = new Map<number, any>(prods.map((p) => [p.id_producto, p]));
-      return {
-        ...oc,
-        detalles: (oc.detalles || []).map((d: any) => {
-          const prod = prodMap.get(d.id_producto);
-          return {
-            ...d,
-            sku: prod ? prod.sku : `LEGO-${d.id_producto}`,
-            nombre_producto: prod ? prod.nombre : `Set LEGO #${d.id_producto}`,
-            peso_unitario_kg: prod ? Number(prod.peso_unitario_kg || 2.0) : 2.0,
-          };
-        }),
-      };
     } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
       return this.fallbackCompras.find((c) => c.id_oc === id_oc) || null;
     }
   }

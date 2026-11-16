@@ -107,9 +107,36 @@ export interface IngresoInventario {
   motivo?: string;
 }
 
+/** Datos del maestro de productos de Inventario que usa Logística */
+export interface FichaProducto {
+  sku: string;
+  nombre_set: string;
+  peso_unitario_kg: number | null;
+  largo_cm: number | null;
+  alto_cm: number | null;
+  ancho_cm: number | null;
+}
+
+export interface ResultadoFichas {
+  fichas: Map<number, FichaProducto>;
+  /** Productos que Inventario no entregó */
+  faltantes: number[];
+  /** Motivo si Inventario no respondió (no se informa cuando el producto simplemente no existe) */
+  error?: string;
+}
+
+const TTL_FICHAS_MS = 5 * 60 * 1000;
+
+function aNumeroONulo(valor: unknown): number | null {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
 export class LogisticaService {
   private repository: LogisticaRepository;
   private inventarioInyectado?: ClienteInventario;
+  private cacheFichas = new Map<number, { ficha: FichaProducto; expira: number }>();
 
   constructor(repository?: LogisticaRepository, inventario?: ClienteInventario) {
     this.repository = repository || new LogisticaRepository();
@@ -137,11 +164,22 @@ export class LogisticaService {
       throw new ValidationError(`La orden de trabajo ${id} no existe`, 404);
     }
 
-    // Peso y medidas de cada producto desde el maestro de Inventario
-    const fichas = await this.repository.getFichasProducto(
+    // Peso y medidas de cada producto desde el maestro de Inventario (GET /productos/:id)
+    const { fichas, faltantes, error } = await this.obtenerFichasProducto(
       (ot.detalles || []).map((d: any) => d.id_producto)
     );
-    const detalles = (ot.detalles || []).map((d: any) => ({ ...d, ...fichas.get(d.id_producto) }));
+    const detalles = (ot.detalles || []).map((d: any) => {
+      const ficha = fichas.get(d.id_producto);
+      return ficha
+        ? {
+            ...d,
+            peso_unitario_kg: ficha.peso_unitario_kg,
+            largo_cm: ficha.largo_cm,
+            alto_cm: ficha.alto_cm,
+            ancho_cm: ficha.ancho_cm,
+          }
+        : d;
+    });
 
     // Calcular dimensiones sugeridas basadas en los productos del pedido
     let pesoSugerido = 0;
@@ -149,13 +187,19 @@ export class LogisticaService {
     let maxAlto = 20;
     let maxAncho = 15;
 
-    if (detalles.length > 0) {
-      pesoSugerido = detalles.reduce((acc: number, curr: any) => {
-        const peso = Number(curr.peso_unitario_kg || 1.5) * curr.cant_solicitada;
+    // En una OT PARCIAL se despacha solo lo recolectado; en las demás, lo solicitado
+    const unidades = (d: any) =>
+      Number(ot.estado === EstadoOT.PARCIAL ? d.cant_recolectada ?? 0 : d.cant_solicitada) || 0;
+    const aEmpacar = detalles.filter((d: any) => unidades(d) > 0);
+
+    if (aEmpacar.length > 0) {
+      pesoSugerido = aEmpacar.reduce((acc: number, curr: any) => {
+        // 1.5 kg por unidad solo si Inventario no entregó el peso (se informa en fichas_inventario)
+        const peso = Number(curr.peso_unitario_kg || 1.5) * unidades(curr);
         return acc + peso;
       }, 0);
 
-      detalles.forEach((item: any) => {
+      aEmpacar.forEach((item: any) => {
         if (item.largo_cm && Number(item.largo_cm) > maxLargo) maxLargo = Number(item.largo_cm);
         if (item.alto_cm && Number(item.alto_cm) > maxAlto) maxAlto = Number(item.alto_cm);
         if (item.ancho_cm && Number(item.ancho_cm) > maxAncho) maxAncho = Number(item.ancho_cm);
@@ -171,7 +215,75 @@ export class LogisticaService {
         ancho_cm: Number(maxAncho.toFixed(1)),
         peso_real_kg: Number(pesoSugerido.toFixed(2)) || 2.5,
       },
+      // Si faltan productos, el empaque sugerido es estimado y conviene medir la caja
+      fichas_inventario: { completas: faltantes.length === 0, faltantes, error },
     };
+  }
+
+  /**
+   * Peso, medidas, SKU y nombre de los productos desde el maestro de Inventario.
+   * Consulta en paralelo y guarda 5 minutos lo encontrado. Un producto que Inventario
+   * no entrega (no existe o Inventario no responde) queda en `faltantes`.
+   */
+  async obtenerFichasProducto(ids: number[]): Promise<ResultadoFichas> {
+    const fichas = new Map<number, FichaProducto>();
+    const faltantes: number[] = [];
+    let error: string | undefined;
+    const ahora = Date.now();
+
+    const unicos = [...new Set(ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+    const porConsultar = unicos.filter((id) => {
+      const enCache = this.cacheFichas.get(id);
+      if (enCache && enCache.expira > ahora) {
+        fichas.set(id, enCache.ficha);
+        return false;
+      }
+      return true;
+    });
+
+    const resultados = await Promise.allSettled(porConsultar.map((id) => this.inventario.obtenerProducto(id)));
+    resultados.forEach((resultado, i) => {
+      const id = porConsultar[i];
+      if (resultado.status === 'fulfilled') {
+        const p = resultado.value;
+        const ficha: FichaProducto = {
+          sku: p.sku,
+          nombre_set: p.nombre_set,
+          peso_unitario_kg: aNumeroONulo(p.peso_unitario_kg),
+          largo_cm: aNumeroONulo(p.largo_cm),
+          alto_cm: aNumeroONulo(p.alto_cm),
+          ancho_cm: aNumeroONulo(p.ancho_cm),
+        };
+        fichas.set(id, ficha);
+        this.cacheFichas.set(id, { ficha, expira: ahora + TTL_FICHAS_MS });
+      } else {
+        faltantes.push(id);
+        const err = resultado.reason;
+        if (!(err instanceof InventarioError && err.tipo === 'NO_ENCONTRADO')) {
+          error = err instanceof Error ? err.message : String(err);
+        }
+      }
+    });
+
+    return { fichas, faltantes, error };
+  }
+
+  /** Completa las líneas de las OC con SKU, nombre y peso desde Inventario (sin valores inventados) */
+  private async completarOrdenesCompra(ocs: any[]) {
+    const ids = ocs.flatMap((oc) => (oc.detalles || []).map((d: any) => d.id_producto));
+    const { fichas } = await this.obtenerFichasProducto(ids);
+    return ocs.map((oc) => ({
+      ...oc,
+      detalles: (oc.detalles || []).map((d: any) => {
+        const ficha = fichas.get(d.id_producto);
+        return {
+          ...d,
+          sku: ficha?.sku ?? d.sku ?? null,
+          nombre_producto: ficha?.nombre_set ?? d.nombre_producto ?? `Producto #${d.id_producto}`,
+          peso_unitario_kg: ficha?.peso_unitario_kg ?? d.peso_unitario_kg ?? null,
+        };
+      }),
+    }));
   }
 
   /**
@@ -589,7 +701,7 @@ export class LogisticaService {
    * Obtiene la lista de órdenes de compra pendientes de recepción en muelle.
    */
   async getComprasPendientes() {
-    return this.repository.getComprasPendientes();
+    return this.completarOrdenesCompra(await this.repository.getComprasPendientes());
   }
 
   /**
@@ -600,7 +712,8 @@ export class LogisticaService {
     if (!oc) {
       throw new ValidationError(`La orden de compra ${id} no existe`, 404);
     }
-    return oc;
+    const [completa] = await this.completarOrdenesCompra([oc]);
+    return completa;
   }
 
   /**
