@@ -40,12 +40,26 @@ export interface EmisionGuiaData {
     peso_real_kg: number;
     peso_volumetrico_kg: number;
   }>;
-  items_inventario: Array<{
-    id_producto: number;
-    cantidad: number;
-    referencia_origen: string;
-  }>;
 }
+
+/**
+ * true si Prisma no pudo llegar a la base (servidor caído, URL mala). Solo en ese caso
+ * se usan los datos en memoria; cualquier otro error (FK, UNIQUE, datos) se propaga.
+ */
+function esErrorDeConexion(err: unknown): boolean {
+  if (err instanceof Prisma.PrismaClientInitializationError) return true;
+  const code = (err as { code?: string } | null)?.code;
+  return typeof code === 'string' && ['P1000', 'P1001', 'P1002', 'P1003', 'P1017'].includes(code);
+}
+
+const INCLUDE_GUIA_COMPLETA = {
+  ot: { include: { detalles: true } },
+  transportista: true,
+  servicio: true,
+  direccion: { include: { comuna: { include: { region: true } } } },
+  bultos: true,
+  eventos: { orderBy: { fecha_hora: 'asc' as const } },
+};
 
 export interface RecepcionItemData {
   id_producto: number;
@@ -286,11 +300,41 @@ export class LogisticaRepository {
   }
 
   /**
+   * Guía con su OT (y detalle), transportista, servicio, dirección, bultos y eventos.
+   */
+  async getGuiaById(id: string) {
+    try {
+      return await prisma.log_guia_despacho.findUnique({ where: { id }, include: INCLUDE_GUIA_COMPLETA });
+    } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
+      return this.fallbackGuias.find((g) => g.id === id) || null;
+    }
+  }
+
+  /**
+   * Guías ya emitidas para una OT (para impedir una segunda guía del mismo pedido).
+   */
+  async getGuiasPorOt(otId: string): Promise<Array<{ id: string; estado_actual: string }>> {
+    try {
+      return await prisma.log_guia_despacho.findMany({
+        where: { ot_id: otId },
+        select: { id: true, estado_actual: true },
+        orderBy: { fecha_emision: 'asc' },
+      });
+    } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
+      return this.fallbackGuias
+        .filter((g) => g.ot_id === otId)
+        .map((g) => ({ id: g.id, estado_actual: g.estado_actual }));
+    }
+  }
+
+  /**
    * Emite una nueva Guía de Despacho en una sola transacción Prisma atómica:
-   * 1. Inserta `log_guia_despacho`
+   * 1. Inserta `log_guia_despacho` (queda en 'Pendiente de stock')
    * 2. Inserta `log_bulto`
    * 3. Registra el evento inicial en `log_evento_tracking`
-   * 4. Registra los movimientos de salida en `inv_mov`
+   * El egreso de stock lo confirma Inventario por API después de esta transacción.
    */
   async emitirGuiaTransaccional(data: EmisionGuiaData) {
     try {
@@ -332,50 +376,20 @@ export class LogisticaRepository {
             guia_id: data.guia_id,
             estado: data.estado_inicial,
             usuario_responsable: data.usuario_responsable,
-            observacion: `Guía emitida exitosamente para OT ${data.ot_id} con tracking ${data.num_seguimiento}`,
+            observacion: `Guía creada para OT ${data.ot_id} con tracking ${data.num_seguimiento}. Esperando que Inventario confirme el egreso de stock.`,
           },
         });
-
-        // 4. Registrar movimientos de inventario de tipo 'SALIDA'
-        for (const item of data.items_inventario) {
-          await tx.inv_mov.create({
-            data: {
-              id_producto: item.id_producto,
-              tipo: 'SALIDA',
-              cantidad: item.cantidad,
-              referencia_origen: item.referencia_origen,
-            },
-          });
-        }
 
         // Retornar la guía con todas sus relaciones
         return tx.log_guia_despacho.findUnique({
           where: { id: data.guia_id },
-          include: {
-            ot: {
-              include: {
-                detalles: true,
-              },
-            },
-            transportista: true,
-            servicio: true,
-            direccion: {
-              include: {
-                comuna: {
-                  include: {
-                    region: true,
-                  },
-                },
-              },
-            },
-            bultos: true,
-            eventos: {
-              orderBy: { fecha_hora: 'asc' },
-            },
-          },
+          include: INCLUDE_GUIA_COMPLETA,
         });
       });
     } catch (err) {
+      // Solo sin base de datos se trabaja en memoria; un error de datos no debe ocultarse.
+      if (!esErrorDeConexion(err)) throw err;
+
       // Fallback transaccional en memoria
       const transportista = mockTransportistas.find((t) => t.id === data.transportista_id);
       const servicio = mockServicios.find((s) => s.id === data.servicio_id);
@@ -407,24 +421,12 @@ export class LogisticaRepository {
             estado: data.estado_inicial,
             fecha_hora: new Date().toISOString(),
             usuario_responsable: data.usuario_responsable,
-            observacion: `Guía emitida exitosamente para OT ${data.ot_id} con tracking ${data.num_seguimiento}`,
+            observacion: `Guía creada para OT ${data.ot_id} con tracking ${data.num_seguimiento}. Esperando que Inventario confirme el egreso de stock.`,
           },
         ],
       };
 
       this.fallbackGuias.unshift(nuevaGuia);
-
-      for (const item of data.items_inventario) {
-        this.fallbackInvMov.push({
-          id: Date.now(),
-          id_producto: item.id_producto,
-          tipo: 'SALIDA',
-          cantidad: item.cantidad,
-          referencia_origen: item.referencia_origen,
-          fecha: new Date().toISOString(),
-        });
-      }
-
       return nuevaGuia;
     }
   }

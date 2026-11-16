@@ -20,6 +20,8 @@ import {
   Transportista,
   BultoInput,
   GuiaDespacho,
+  ConfirmacionStock,
+  ESTADOS_STOCK,
 } from '../types';
 import {
   fetchPedidosPendientes,
@@ -72,6 +74,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   const [emitirCargando, setEmitirCargando] = useState<boolean>(false);
   const [errorEmision, setErrorEmision] = useState<string | null>(null);
   const [guiaEmitidaReciente, setGuiaEmitidaReciente] = useState<GuiaDespacho | null>(null);
+  const [stockReciente, setStockReciente] = useState<ConfirmacionStock | null>(null);
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
 
   // Cargar lista inicial de OTs y Transportistas
@@ -88,8 +91,11 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
 
       // Preseleccionar la primera OT disponible si no hay seleccionada
       if (listaOts.length > 0 && !otSeleccionadaId) {
-        // Preferir una OT con estado CERRADO para buena UX inicial
-        const otCerrada = listaOts.find((o) => o.estado === 'CERRADO') || listaOts[0];
+        // Preferir una OT que se pueda despachar (CERRADO o PARCIAL y sin guía)
+        const otCerrada =
+          listaOts.find((o) => o.estado === 'CERRADO' && !(o.guias && o.guias.length > 0)) ||
+          listaOts.find((o) => o.estado === 'CERRADO') ||
+          listaOts[0];
         setOtSeleccionadaId(otCerrada.id);
       }
 
@@ -204,8 +210,13 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
       return;
     }
 
-    if (otActual.estado !== 'CERRADO') {
-      setErrorEmision('No se puede emitir guía: la OT no se encuentra en estado CERRADO.');
+    if (!otDespachable) {
+      setErrorEmision('No se puede emitir guía: la OT debe estar CERRADO o PARCIAL.');
+      return;
+    }
+
+    if (guiaExistente) {
+      setErrorEmision(`La OT ${otActual.id} ya tiene la guía ${guiaExistente.id}. Un pedido se despacha en una sola guía.`);
       return;
     }
 
@@ -237,6 +248,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
       });
 
       setGuiaEmitidaReciente(res.guia);
+      setStockReciente(res.inventario ?? null);
       setModalAbierto(true);
       onGuiaEmitida(res.guia);
 
@@ -254,7 +266,12 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   const serviciosDisponibles = transportistaSeleccionado ? transportistaSeleccionado.servicios : [];
   const servicioSeleccionado = serviciosDisponibles.find((s) => s.id === servicioId);
 
-  const otEsCerrada = otActual?.estado === 'CERRADO';
+  // CERRADO: todo recolectado. PARCIAL: se despacha lo recolectado e Inventario libera el resto.
+  const otEsParcial = otActual?.estado === 'PARCIAL';
+  const otDespachable = otActual?.estado === 'CERRADO' || otEsParcial;
+  // Un pedido se despacha en una sola guía
+  const guiaExistente = otActual?.guias && otActual.guias.length > 0 ? otActual.guias[0] : null;
+  const puedeEmitir = otDespachable && !guiaExistente;
   const pesoMayorEsVolumetrico = pesoVolumetrico > dimensiones.peso_real_kg;
 
   return (
@@ -372,8 +389,8 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             </div>
           </div>
 
-          {/* ALERTA DE BLOQUEO SI LA OT NO ESTÁ CERRADA (Regla de negocio estricta) */}
-          {otActual && !otEsCerrada && (
+          {/* ALERTA DE BLOQUEO SI LA OT NO ESTÁ CERRADA NI PARCIAL (Regla de negocio estricta) */}
+          {otActual && !otDespachable && (
             <div className="mt-5 p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-900 flex items-start space-x-3.5 animate-in slide-in-from-top-2">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
@@ -381,8 +398,38 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                   Bloqueo de Regla de Negocio: La OT {otActual.id} se encuentra en estado "{otActual.estado}"
                 </p>
                 <p className="text-xs text-amber-800 mt-1">
-                  Por norma operacional de LesGo ERP, solo las órdenes en estado <span className="font-bold underline">CERRADO</span> (recolección al 100%) pueden emitir guía de despacho y egresar existencias de inventario.
+                  Solo las órdenes en estado <span className="font-bold underline">CERRADO</span> (recolección al 100%) o <span className="font-bold underline">PARCIAL</span> (se despacha lo recolectado) pueden emitir guía de despacho.
                   El botón de emisión permanecerá deshabilitado.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* UN PEDIDO, UNA GUÍA */}
+          {otActual && otDespachable && guiaExistente && (
+            <div className="mt-5 p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-amber-900 flex items-start space-x-3.5 animate-in slide-in-from-top-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-bold">
+                  La OT {otActual.id} ya tiene la guía {guiaExistente.id} ({guiaExistente.estado_actual})
+                </p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Un pedido se despacha en una sola guía.
+                  {ESTADOS_STOCK.includes(guiaExistente.estado_actual) &&
+                    ' Esa guía espera la confirmación de Inventario: reintente desde la Consola de Tracking.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* OT PARCIAL: se despacha solo lo recolectado */}
+          {otActual && otEsParcial && !guiaExistente && (
+            <div className="mt-5 p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 flex items-start space-x-3.5">
+              <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-bold">Despacho parcial</p>
+                <p className="text-xs text-blue-800 mt-1">
+                  Se despachan solo las unidades recolectadas. Inventario libera el resto de la reserva del pedido.
                 </p>
               </div>
             </div>
@@ -689,9 +736,9 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
           <div className="flex justify-end mt-5">
             <button
               type="submit"
-              disabled={!otEsCerrada || !tieneCobertura || emitirCargando}
+              disabled={!puedeEmitir || !tieneCobertura || emitirCargando}
               className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center space-x-2 ${
-                !otEsCerrada || !tieneCobertura || emitirCargando
+                !puedeEmitir || !tieneCobertura || emitirCargando
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
                   : 'bg-[#e52521] hover:bg-[#b91c1c] text-white hover:shadow-lg active:scale-95'
               }`}
@@ -704,7 +751,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  <span>Emitir guía y rebajar inventario</span>
+                  <span>Emitir guía y confirmar egreso con Inventario</span>
                 </>
               )}
             </button>
@@ -717,6 +764,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
       <ModalConfirmacion
         isOpen={modalAbierto}
         guia={guiaEmitidaReciente}
+        inventario={stockReciente}
         onClose={() => setModalAbierto(false)}
         onGoToTracking={onGoToTracking}
       />

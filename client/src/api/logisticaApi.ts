@@ -7,6 +7,7 @@ import {
   OrdenCompra,
   RegistrarRecepcionPayload,
   RecepcionRegistro,
+  ConfirmacionStock,
 } from '../types';
 
 const API_BASE = '/api/logistica';
@@ -62,7 +63,7 @@ export async function emitirGuiaDespacho(payload: {
   servicio_id: number;
   bultos: BultoInput[];
   usuario_responsable?: string;
-}): Promise<{ mensaje: string; guia: GuiaDespacho }> {
+}): Promise<{ mensaje: string; guia: GuiaDespacho; inventario: ConfirmacionStock }> {
   const res = await fetch(`${API_BASE}/guias`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -79,6 +80,23 @@ export async function emitirGuiaDespacho(payload: {
     throw err;
   }
 
+  return data;
+}
+
+/** Vuelve a pedir a Inventario que confirme el egreso de una guía en 'Pendiente/Error de stock' */
+export async function reintentarStockGuia(
+  guiaId: string,
+  usuario_responsable?: string
+): Promise<{ mensaje: string; guia: GuiaDespacho; inventario: ConfirmacionStock }> {
+  const res = await fetch(`${API_BASE}/guias/${encodeURIComponent(guiaId)}/reintentar-stock`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usuario_responsable }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al reintentar la confirmación de stock');
+  }
   return data;
 }
 

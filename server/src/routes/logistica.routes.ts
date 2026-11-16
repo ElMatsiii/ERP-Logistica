@@ -20,6 +20,9 @@ export function createLogisticaRouter(controller?: LogisticaController): Router 
   // 3. Emisión de Guía de Despacho (con validaciones transaccionales)
   router.post('/guias', ctrl.emitirGuia);
 
+  // 3b. Reintento de la confirmación de stock con Inventario (guías en 'Pendiente de stock' o 'Error de stock')
+  router.post('/guias/:id/reintentar-stock', ctrl.reintentarStockGuia);
+
   // 4. Listado y búsqueda de tracking de guías emitidas
   router.get('/tracking', ctrl.getTracking);
 

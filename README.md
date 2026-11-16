@@ -7,7 +7,7 @@
 
 ## Resumen del Proyecto
 
-Este módulo implementa la solución integral de **Logística y Transporte** para el ERP de **"LesGo"** (tienda especializada en sets emblemáticos de LEGO). Cubre el ciclo completo desde la validación de órdenes de trabajo recolectadas (*picking*), cubicación volumétrica en tiempo real, selección de transportistas y emisión de Guías de Despacho transaccionales con rebaja de existencias en Inventario (`inv_mov`), hasta la consola de seguimiento y bitácora cronológica (*tracking*).
+Este módulo implementa la solución integral de **Logística y Transporte** para el ERP de **"LesGo"** (tienda especializada en sets emblemáticos de LEGO). Cubre el ciclo completo desde la validación de órdenes de trabajo recolectadas (*picking*), cubicación volumétrica en tiempo real, selección de transportistas y emisión de Guías de Despacho con confirmación del egreso de stock en la API de Inventario, hasta la consola de seguimiento y bitácora cronológica (*tracking*).
 
 ---
 
@@ -46,14 +46,15 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
 10. `log_guia_despacho`: Guías emitidas con número de seguimiento y costo.
 11. `log_bulto`: Medidas de embalaje (largo, alto, ancho, pesos).
 12. `log_evento_tracking`: Bitácora *append-only* de cambios de estado.
-13. `test_log_inv_mov` (`inv_mov`): Movimientos de egreso de inventario tipo `SALIDA`.
+13. `test_log_inv_mov` (`inv_mov`): Movimientos de inventario de prueba (el despacho ya no escribe aquí: lo confirma la API de Inventario).
 
 ---
 
 ## Reglas de Negocio Implementadas
 
 1. **Validación de Estado OT**:
-   - Solo se permite emitir guía si la orden de trabajo se encuentra estrictamente en estado `CERRADO`. Si no lo está, el frontend bloquea la acción y el backend responde `HTTP 422: "No se puede emitir guía: la OT no se encuentra en estado CERRADO"`.
+   - Solo se emite guía si la OT está en `CERRADO` (todo recolectado) o `PARCIAL` (se despacha lo recolectado e Inventario libera el resto). En otro estado, el frontend bloquea la acción y el backend responde `HTTP 422`.
+   - **Un pedido, una guía**: si la OT ya tiene una guía, se responde `HTTP 409`. Si esa guía espera a Inventario, se reintenta esa misma guía.
 2. **Validación de Cobertura Vigente**:
    - Se valida que la comuna de destino del cliente posea cobertura activa (`vigente = true`) para el transportista y servicio seleccionado. En caso contrario, se responde `HTTP 422`.
 3. **Validación de Dimensiones y Pesos**:
@@ -61,8 +62,11 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
 4. **Cálculo de Cubicación Volumétrica**:
    - Peso Volumétrico = $\frac{\text{Largo} \times \text{Alto} \times \text{Ancho}}{\text{Factor Volumétrico}}$ (default 5000 o según transportista).
    - Peso a Cobrar = $\max(\text{Peso Real}, \text{Peso Volumétrico})$.
-5. **Transaccionalidad Atómica**:
-   - En una única transacción Prisma `$transaction`, se crea la guía, el bulto, el evento inicial en bitácora y el egreso en inventario `inv_mov`.
+5. **Transaccionalidad y Confirmación de Stock con Inventario**:
+   - Antes de crear la guía se consulta la reserva del pedido en Inventario (`GET /reservas`): sin reserva responde `HTTP 422`, si no está `PENDIENTE` responde `HTTP 409` y si Inventario no responde, `HTTP 503`. En esos casos no se crea nada.
+   - En una única transacción Prisma `$transaction` se crean la guía (en `Pendiente de stock`), los bultos y el evento inicial en bitácora.
+   - Luego se pide a Inventario el egreso (`POST /movimientos/despacho`) con **todas** las líneas de la OT y lo recolectado tal cual (0 si no se encontró). Si confirma, la guía pasa a `Preparado`; si falla, queda en `Error de stock` y se reintenta con `POST /api/logistica/guias/:id/reintentar-stock` (Inventario no descuenta dos veces la misma guía).
+   - Mientras la guía está en `Pendiente de stock` o `Error de stock` no se registran eventos de transporte.
 
 ---
 
@@ -137,7 +141,8 @@ Logística consulta y confirma stock en la API REST de Inventario (`server/src/i
 | `GET` | `/api/logistica/ots/:id` | Detalle de OT, productos, empaque sugerido y dirección |
 | `GET` | `/api/logistica/transportistas` | Transportistas y servicios activos |
 | `POST` | `/api/logistica/cotizar` | Cotización y validación de cobertura en vivo |
-| `POST` | `/api/logistica/guias` | Emisión transaccional de Guía de Despacho |
+| `POST` | `/api/logistica/guias` | Emisión de Guía de Despacho y confirmación del egreso con Inventario |
+| `POST` | `/api/logistica/guias/:id/reintentar-stock` | Reintenta la confirmación de stock de una guía en `Pendiente de stock` o `Error de stock` |
 | `GET` | `/api/logistica/tracking` | Consulta con filtros (`busqueda`, `estado`, `transportista`, `fecha`) |
 | `POST` | `/api/logistica/tracking/:id_guia/evento` | Inserción en bitácora append-only y actualización de estado |
 | `GET` | `/api/logistica/integraciones/inventario` | Modo del cliente de Inventario (real o simulado) y si responde |

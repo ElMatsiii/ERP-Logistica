@@ -14,7 +14,7 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "npm run db:ddl && npm run db:generate && npm run db:seed",
-    "test": "tsx --test server/src/domain/cubicacion.test.ts server/src/integrations/inventario/inventario.test.ts",
+    "test": "tsx --test server/src/domain/cubicacion.test.ts server/src/integrations/inventario/inventario.test.ts server/src/services/despacho.test.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:server": "docker compose up --build -d server",
