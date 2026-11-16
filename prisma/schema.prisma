@@ -136,9 +136,10 @@ model log_direccion {
 
 model log_ot_picking {
   id              String                  @id // ej: "OT-4091"
-  id_pedido       String                  // ej: "PED-10294"
+  id_pedido       Int                     // id del pedido de e-Commerce (ej: 10294)
   id_operador     Int
   nombre_operador String
+  operador        RrhhEmpleado            @relation(fields: [id_operador], references: [id_empleado])
   estado          EstadoOT
   fecha_creacion  DateTime                @default(now())
 
@@ -163,10 +164,7 @@ model log_ot_picking_detalle {
   nombre_producto  String
   cant_solicitada  Int
   cant_recolectada Int
-  peso_unitario_kg Decimal?       @db.Decimal(10, 2)
-  largo_cm         Decimal?       @db.Decimal(10, 2)
-  alto_cm          Decimal?       @db.Decimal(10, 2)
-  ancho_cm         Decimal?       @db.Decimal(10, 2)
+  // Peso y medidas no se guardan aquí: vienen del maestro de productos de Inventario.
 
   ot               log_ot_picking      @relation(fields: [ot_id], references: [id], onDelete: Cascade)
   bulto_detalles   log_bulto_detalle[]
@@ -290,13 +288,19 @@ model log_incidencia {
 model log_recepcion {
   id                   Int                     @id @default(autoincrement())
   id_oc                Int
+  // Opcionales hasta que el formulario de recepción los envíe (Inventario los exige).
+  id_proveedor         Int?
+  nro_guia_proveedor   String?
   id_empleado_receptor Int
   fecha_recepcion      DateTime                @default(now())
   estado               String
   observacion          String?
 
+  receptor             RrhhEmpleado            @relation(fields: [id_empleado_receptor], references: [id_empleado])
   detalles             log_recepcion_detalle[]
 
+  // Una OC puede llegar en varias entregas, pero cada guía del proveedor se registra una vez.
+  @@unique([id_oc, nro_guia_proveedor])
   @@map("log_recepcion")
   @@schema("logistica")
 }
@@ -305,6 +309,7 @@ model log_recepcion_detalle {
   id                Int           @id @default(autoincrement())
   recepcion_id      Int
   id_producto       Int
+  id_bodega         Int?          // bodega de Inventario donde entra la línea
   cantidad_esperada Int
   cantidad_recibida Int
   cantidad_danada   Int           @default(0)
@@ -377,6 +382,8 @@ model RrhhEmpleado {
   cargo       String
 
   usuarios    RrhhUsuario[]
+  ots         log_ot_picking[]
+  recepciones log_recepcion[]
 
   @@map("test_log_rrhh_empleado")
   @@schema("logistica")
@@ -408,12 +415,13 @@ model RrhhUsuario {
 }
 
 model ComprasOc {
-  id_oc     Int                @id @default(autoincrement())
-  proveedor String
-  fecha     DateTime           @default(now())
-  estado    String
+  id_oc        Int                @id @default(autoincrement())
+  id_proveedor Int
+  proveedor    String
+  fecha        DateTime           @default(now())
+  estado       String
 
-  detalles  ComprasOcDetalle[]
+  detalles     ComprasOcDetalle[]
 
   @@map("test_log_compras_oc")
   @@schema("logistica")

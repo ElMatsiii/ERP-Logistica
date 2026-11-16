@@ -131,7 +131,7 @@ export const mockDirecciones = [
 export const mockOts: any[] = [
   {
     id: 'OT-4091',
-    id_pedido: 'PED-10294',
+    id_pedido: 10294,
     id_operador: 301,
     nombre_operador: 'Carlos Gómez (Bodega Central)',
     estado: 'CERRADO',
@@ -147,7 +147,7 @@ export const mockOts: any[] = [
   },
   {
     id: 'OT-4092',
-    id_pedido: 'PED-10295',
+    id_pedido: 10295,
     id_operador: 302,
     nombre_operador: 'Juan Tapia (Picking Zona Norte)',
     estado: 'CERRADO',
@@ -164,7 +164,7 @@ export const mockOts: any[] = [
   },
   {
     id: 'OT-4093',
-    id_pedido: 'PED-10296',
+    id_pedido: 10296,
     id_operador: 301,
     nombre_operador: 'Carlos Gómez (Bodega Central)',
     estado: 'CERRADO',
@@ -180,7 +180,7 @@ export const mockOts: any[] = [
   },
   {
     id: 'OT-4094',
-    id_pedido: 'PED-10297',
+    id_pedido: 10297,
     id_operador: 303,
     nombre_operador: 'Loreto Silva (Bodega Packing)',
     estado: 'CERRADO',
@@ -196,7 +196,7 @@ export const mockOts: any[] = [
   },
   {
     id: 'OT-4097',
-    id_pedido: 'PED-10300',
+    id_pedido: 10300,
     id_operador: 301,
     nombre_operador: 'Carlos Gómez (Bodega Central)',
     estado: 'PENDIENTE',
@@ -212,7 +212,7 @@ export const mockOts: any[] = [
   },
   {
     id: 'OT-4098',
-    id_pedido: 'PED-10301',
+    id_pedido: 10301,
     id_operador: 302,
     nombre_operador: 'Juan Tapia (Picking Zona Norte)',
     estado: 'PARCIAL',
@@ -228,7 +228,7 @@ export const mockOts: any[] = [
   },
   {
     id: 'OT-4101',
-    id_pedido: 'PED-10304',
+    id_pedido: 10304,
     id_operador: 301,
     nombre_operador: 'Carlos Gómez (Bodega Central)',
     estado: 'CERRADO',
@@ -352,6 +352,7 @@ export const mockInvMov: any[] = [
 export const mockComprasOc: any[] = [
   {
     id_oc: 8001,
+    id_proveedor: 4,
     proveedor: 'LEGO System A/S (Billund, Dinamarca)',
     estado: 'EMITIDA',
     fecha_emision: '2026-11-01T10:00:00Z',
@@ -363,6 +364,7 @@ export const mockComprasOc: any[] = [
   },
   {
     id_oc: 8002,
+    id_proveedor: 3,
     proveedor: 'LEGO Distribution LATAM (México)',
     estado: 'EMITIDA',
     fecha_emision: '2026-11-03T11:30:00Z',
@@ -374,6 +376,7 @@ export const mockComprasOc: any[] = [
   },
   {
     id_oc: 8004,
+    id_proveedor: 2,
     proveedor: 'Importadora Bricks Chile SpA',
     estado: 'EMITIDA',
     fecha_emision: '2026-11-05T09:00:00Z',
@@ -385,6 +388,7 @@ export const mockComprasOc: any[] = [
   },
   {
     id_oc: 8005,
+    id_proveedor: 5,
     proveedor: 'Distribuidora Juguetes del Norte',
     estado: 'EMITIDA',
     fecha_emision: '2026-11-08T14:15:00Z',
@@ -399,8 +403,8 @@ export const mockRecepciones: any[] = [
   {
     id: 1,
     id_oc: 8003,
-    id_empleado_receptor: 12,
-    nombre_empleado: 'P. Pérez (Operador Bodega)',
+    id_empleado_receptor: 304,
+    nombre_empleado: 'Esteban Paredes (Operador de Recepción)',
     fecha_recepcion: new Date(Date.now() - 3600000 * 24 * 5).toISOString(),
     estado: 'CONFORME',
     observacion: 'Descarga completa en Muelle 1 sin cajas dañadas.',

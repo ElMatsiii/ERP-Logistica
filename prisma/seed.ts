@@ -11,9 +11,6 @@ export async function main() {
   // Limpiar tablas previas en orden de dependencias
   await prisma.comprasOcDetalle.deleteMany({});
   await prisma.comprasOc.deleteMany({});
-  await prisma.rrhhUsuario.deleteMany({});
-  await prisma.rrhhRol.deleteMany({});
-  await prisma.rrhhEmpleado.deleteMany({});
   await prisma.invProducto.deleteMany({});
   await prisma.ventasPedidoDetalle.deleteMany({});
   await prisma.ventasPedido.deleteMany({});
@@ -36,6 +33,10 @@ export async function main() {
   await prisma.log_region.deleteMany({});
   await prisma.log_servicio.deleteMany({});
   await prisma.log_transportista.deleteMany({});
+  // Al final: las OT y las recepciones apuntan a los empleados.
+  await prisma.rrhhUsuario.deleteMany({});
+  await prisma.rrhhRol.deleteMany({});
+  await prisma.rrhhEmpleado.deleteMany({});
 
   // 1. REGIONES (10 registros)
   console.log('[INFO] Insertando regiones...');
@@ -272,12 +273,31 @@ export async function main() {
     await prisma.log_direccion.create({ data: d });
   }
 
+  // Empleados de prueba (simulan rrhh.empleado). Van antes de las OT y las recepciones,
+  // que los referencian con FK (id_operador, id_empleado_receptor).
+  console.log('[INFO] Insertando empleados de prueba (RRHH)...');
+  const testEmpleados = [
+    { id_empleado: 301, nombre: 'Carlos Gómez', cargo: 'Operador de Bodega Central' },
+    { id_empleado: 302, nombre: 'Juan Tapia', cargo: 'Operador de Picking Zona Norte' },
+    { id_empleado: 303, nombre: 'Loreto Silva', cargo: 'Operadora de Bodega Packing' },
+    { id_empleado: 304, nombre: 'Esteban Paredes', cargo: 'Operador de Recepción y Despacho' },
+    { id_empleado: 305, nombre: 'Maximiliano Pizarro', cargo: 'Coordinador de Despacho' },
+    { id_empleado: 306, nombre: 'Máximo Sazo', cargo: 'Administrador de Logística' },
+    { id_empleado: 307, nombre: 'Nicolás Rojas', cargo: 'Coordinador de Transporte' },
+    { id_empleado: 308, nombre: 'Daniela Infante', cargo: 'Analista de Control Logístico' },
+    { id_empleado: 309, nombre: 'Javier Catalán', cargo: 'Supervisor de Última Milla' },
+    { id_empleado: 310, nombre: 'Bastián Salinas', cargo: 'Especialista de Inventario y Cubicación' },
+  ];
+  for (const emp of testEmpleados) {
+    await prisma.rrhhEmpleado.create({ data: emp });
+  }
+
   // 8. ÓRDENES DE TRABAJO (OT PICKING) (12 registros con variados estados)
   console.log('[INFO] Insertando órdenes de trabajo de picking (OT)...');
   const otsData = [
     {
       id: 'OT-4091',
-      id_pedido: 'PED-10294',
+      id_pedido: 10294,
       id_operador: 301,
       nombre_operador: 'Carlos Gómez (Bodega Central)',
       estado: EstadoOT.CERRADO,
@@ -289,7 +309,7 @@ export async function main() {
     },
     {
       id: 'OT-4092',
-      id_pedido: 'PED-10295',
+      id_pedido: 10295,
       id_operador: 302,
       nombre_operador: 'Juan Tapia (Picking Zona Norte)',
       estado: EstadoOT.CERRADO,
@@ -301,7 +321,7 @@ export async function main() {
     },
     {
       id: 'OT-4093',
-      id_pedido: 'PED-10296',
+      id_pedido: 10296,
       id_operador: 301,
       nombre_operador: 'Carlos Gómez (Bodega Central)',
       estado: EstadoOT.CERRADO,
@@ -313,7 +333,7 @@ export async function main() {
     },
     {
       id: 'OT-4094',
-      id_pedido: 'PED-10297',
+      id_pedido: 10297,
       id_operador: 303,
       nombre_operador: 'Loreto Silva (Bodega Packing)',
       estado: EstadoOT.CERRADO,
@@ -325,7 +345,7 @@ export async function main() {
     },
     {
       id: 'OT-4095',
-      id_pedido: 'PED-10298',
+      id_pedido: 10298,
       id_operador: 302,
       nombre_operador: 'Juan Tapia (Picking Zona Norte)',
       estado: EstadoOT.CERRADO,
@@ -337,7 +357,7 @@ export async function main() {
     },
     {
       id: 'OT-4096',
-      id_pedido: 'PED-10299',
+      id_pedido: 10299,
       id_operador: 304,
       nombre_operador: 'Esteban Paredes (Logística)',
       estado: EstadoOT.CERRADO,
@@ -349,7 +369,7 @@ export async function main() {
     },
     {
       id: 'OT-4097',
-      id_pedido: 'PED-10300',
+      id_pedido: 10300,
       id_operador: 301,
       nombre_operador: 'Carlos Gómez (Bodega Central)',
       estado: EstadoOT.PENDIENTE,
@@ -361,7 +381,7 @@ export async function main() {
     },
     {
       id: 'OT-4098',
-      id_pedido: 'PED-10301',
+      id_pedido: 10301,
       id_operador: 302,
       nombre_operador: 'Juan Tapia (Picking Zona Norte)',
       estado: EstadoOT.PARCIAL,
@@ -373,7 +393,7 @@ export async function main() {
     },
     {
       id: 'OT-4099',
-      id_pedido: 'PED-10302',
+      id_pedido: 10302,
       id_operador: 303,
       nombre_operador: 'Loreto Silva (Bodega Packing)',
       estado: EstadoOT.EN_PROCESO,
@@ -385,7 +405,7 @@ export async function main() {
     },
     {
       id: 'OT-4100',
-      id_pedido: 'PED-10303',
+      id_pedido: 10303,
       id_operador: 304,
       nombre_operador: 'Esteban Paredes (Logística)',
       estado: EstadoOT.PENDIENTE,
@@ -398,7 +418,7 @@ export async function main() {
     // OT con dirección sin cobertura activa (para test de validación 2)
     {
       id: 'OT-4101',
-      id_pedido: 'PED-10304',
+      id_pedido: 10304,
       id_operador: 301,
       nombre_operador: 'Carlos Gómez (Bodega Central)',
       estado: EstadoOT.CERRADO,
@@ -410,7 +430,7 @@ export async function main() {
     },
     {
       id: 'OT-4102',
-      id_pedido: 'PED-10305',
+      id_pedido: 10305,
       id_operador: 303,
       nombre_operador: 'Loreto Silva (Bodega Packing)',
       estado: EstadoOT.CERRADO,
@@ -430,31 +450,31 @@ export async function main() {
   console.log('[INFO] Insertando detalle de productos LEGO en órdenes de trabajo...');
   const detallesData = [
     // OT-4091: Millennium Falcon (UCS)
-    { id: 1, ot_id: 'OT-4091', id_producto: 75192, sku: 'LEGO-SW-75192', nombre_producto: 'LEGO Star Wars Millennium Falcon UCS', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 13.2, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
+    { id: 1, ot_id: 'OT-4091', id_producto: 75192, sku: 'LEGO-SW-75192', nombre_producto: 'LEGO Star Wars Millennium Falcon UCS', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4092: AT-AT + Batmobile Tumbler
-    { id: 2, ot_id: 'OT-4092', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
-    { id: 3, ot_id: 'OT-4092', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
+    { id: 2, ot_id: 'OT-4092', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1 },
+    { id: 3, ot_id: 'OT-4092', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4093: Ninjago City Gardens
-    { id: 4, ot_id: 'OT-4093', id_producto: 71741, sku: 'LEGO-NJ-71741', nombre_producto: 'LEGO Ninjago City Gardens', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 5.6, largo_cm: 58.2, alto_cm: 48.0, ancho_cm: 17.0 },
+    { id: 4, ot_id: 'OT-4093', id_producto: 71741, sku: 'LEGO-NJ-71741', nombre_producto: 'LEGO Ninjago City Gardens', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4094: Titanic
-    { id: 5, ot_id: 'OT-4094', id_producto: 10294, sku: 'LEGO-IC-10294', nombre_producto: 'LEGO Icons Titanic (9090 piezas)', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 14.5, largo_cm: 60.0, alto_cm: 50.0, ancho_cm: 40.0 },
+    { id: 5, ot_id: 'OT-4094', id_producto: 10294, sku: 'LEGO-IC-10294', nombre_producto: 'LEGO Icons Titanic (9090 piezas)', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4095: Hogwarts Castle
-    { id: 6, ot_id: 'OT-4095', id_producto: 71043, sku: 'LEGO-HP-71043', nombre_producto: 'LEGO Harry Potter Castillo de Hogwarts', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 7.5, largo_cm: 60.0, alto_cm: 51.0, ancho_cm: 20.0 },
+    { id: 6, ot_id: 'OT-4095', id_producto: 71043, sku: 'LEGO-HP-71043', nombre_producto: 'LEGO Harry Potter Castillo de Hogwarts', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4096: NASA Space Shuttle Discovery
-    { id: 7, ot_id: 'OT-4096', id_producto: 10283, sku: 'LEGO-IC-10283', nombre_producto: 'LEGO NASA Space Shuttle Discovery', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 3.2, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
+    { id: 7, ot_id: 'OT-4096', id_producto: 10283, sku: 'LEGO-IC-10283', nombre_producto: 'LEGO NASA Space Shuttle Discovery', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4097 (Pendiente): Porsche 911
-    { id: 8, ot_id: 'OT-4097', id_producto: 10295, sku: 'LEGO-IC-10295', nombre_producto: 'LEGO Icons Porsche 911 Turbo & Targa', cant_solicitada: 2, cant_recolectada: 0, peso_unitario_kg: 1.8, largo_cm: 48.0, alto_cm: 28.2, ancho_cm: 11.8 },
+    { id: 8, ot_id: 'OT-4097', id_producto: 10295, sku: 'LEGO-IC-10295', nombre_producto: 'LEGO Icons Porsche 911 Turbo & Targa', cant_solicitada: 2, cant_recolectada: 0 },
     // OT-4098 (Parcial): Police Station + Camp Nou
-    { id: 9, ot_id: 'OT-4098', id_producto: 10278, sku: 'LEGO-MD-10278', nombre_producto: 'LEGO Modular Police Station', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.9, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
-    { id: 10, ot_id: 'OT-4098', id_producto: 10284, sku: 'LEGO-IC-10284', nombre_producto: 'LEGO Icons Camp Nou FC Barcelona', cant_solicitada: 1, cant_recolectada: 0, peso_unitario_kg: 5.3, largo_cm: 58.0, alto_cm: 48.0, ancho_cm: 17.0 },
+    { id: 9, ot_id: 'OT-4098', id_producto: 10278, sku: 'LEGO-MD-10278', nombre_producto: 'LEGO Modular Police Station', cant_solicitada: 1, cant_recolectada: 1 },
+    { id: 10, ot_id: 'OT-4098', id_producto: 10284, sku: 'LEGO-IC-10284', nombre_producto: 'LEGO Icons Camp Nou FC Barcelona', cant_solicitada: 1, cant_recolectada: 0 },
     // OT-4099 (En Proceso): Eiffel Tower
-    { id: 11, ot_id: 'OT-4099', id_producto: 10307, sku: 'LEGO-IC-10307', nombre_producto: 'LEGO Icons Torre Eiffel (149 cm)', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 12.0, largo_cm: 62.0, alto_cm: 52.0, ancho_cm: 39.0 },
+    { id: 11, ot_id: 'OT-4099', id_producto: 10307, sku: 'LEGO-IC-10307', nombre_producto: 'LEGO Icons Torre Eiffel (149 cm)', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4100 (Pendiente): Ideas Grand Piano
-    { id: 12, ot_id: 'OT-4100', id_producto: 21323, sku: 'LEGO-ID-21323', nombre_producto: 'LEGO Ideas Grand Piano Motorizado', cant_solicitada: 1, cant_recolectada: 0, peso_unitario_kg: 5.8, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 16.0 },
+    { id: 12, ot_id: 'OT-4100', id_producto: 21323, sku: 'LEGO-ID-21323', nombre_producto: 'LEGO Ideas Grand Piano Motorizado', cant_solicitada: 1, cant_recolectada: 0 },
     // OT-4101: Batman Batmobile
-    { id: 13, ot_id: 'OT-4101', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
+    { id: 13, ot_id: 'OT-4101', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4102: AT-AT Walker
-    { id: 14, ot_id: 'OT-4102', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1, peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
+    { id: 14, ot_id: 'OT-4102', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1 },
   ];
 
   for (const det of detallesData) {
@@ -718,6 +738,8 @@ export async function main() {
     { id: 8, codigo: 'REPROGRAMADO', nombre: 'Reprogramado', orden_flujo: 8, es_terminal: false },
     { id: 9, codigo: 'DEVUELTO', nombre: 'Devuelto a bodega', orden_flujo: 9, es_terminal: true },
     { id: 10, codigo: 'DERIVADO_POSTVENTA', nombre: 'Derivado a Postventa', orden_flujo: 10, es_terminal: true },
+    { id: 11, codigo: 'PENDIENTE_STOCK', nombre: 'Pendiente de stock', orden_flujo: 0, es_terminal: false },
+    { id: 12, codigo: 'ERROR_STOCK', nombre: 'Error de stock', orden_flujo: 0, es_terminal: false },
   ];
   for (const est of estadosEnvioData) {
     await prisma.log_estado_envio.create({ data: est });
@@ -763,32 +785,32 @@ export async function main() {
   // 17. RECEPCIONES DE ÓRDENES DE COMPRA (log_recepcion y log_recepcion_detalle) (10 registros c/u)
   console.log('[INFO] Insertando recepciones de órdenes de compra y su detalle...');
   const recepcionesData = [
-    { id: 1, id_oc: 8001, id_empleado_receptor: 301, estado: 'CONFORME', observacion: 'Recepción completa lote Star Wars UCS sin daños' },
-    { id: 2, id_oc: 8002, id_empleado_receptor: 302, estado: 'CON_OBSERVACIONES', observacion: '1 caja con abolladura leve en esquina' },
-    { id: 3, id_oc: 8003, id_empleado_receptor: 303, estado: 'CONFORME', observacion: 'Ingreso línea LEGO Icons verificado al 100%' },
-    { id: 4, id_oc: 8004, id_empleado_receptor: 301, estado: 'PARCIAL', observacion: 'Faltaron 2 unidades de LEGO Camp Nou respecto a guía proveedor' },
-    { id: 5, id_oc: 8005, id_empleado_receptor: 304, estado: 'CONFORME', observacion: 'Pallet sellado de fábrica LEGO Dinamarca' },
-    { id: 6, id_oc: 8006, id_empleado_receptor: 302, estado: 'CONFORME', observacion: 'Recepción conforme línea Harry Potter' },
-    { id: 7, id_oc: 8007, id_empleado_receptor: 303, estado: 'CON_OBSERVACIONES', observacion: 'Sello de seguridad húmedo en 1 unidad' },
-    { id: 8, id_oc: 8008, id_empleado_receptor: 301, estado: 'CONFORME', observacion: 'Lote Ninjago ingresado a rack A-12' },
-    { id: 9, id_oc: 8009, id_empleado_receptor: 304, estado: 'CONFORME', observacion: 'Reposición stock seguridad temporada Q4' },
-    { id: 10, id_oc: 8010, id_empleado_receptor: 302, estado: 'CONFORME', observacion: 'Recepción validada por código EAN' },
+    { id: 1, id_oc: 8001, id_proveedor: 4, nro_guia_proveedor: 'GP-8001-1', id_empleado_receptor: 301, estado: 'CONFORME', observacion: 'Recepción completa lote Star Wars UCS sin daños' },
+    { id: 2, id_oc: 8002, id_proveedor: 3, nro_guia_proveedor: 'GP-8002-1', id_empleado_receptor: 302, estado: 'CON_OBSERVACIONES', observacion: '1 caja con abolladura leve en esquina' },
+    { id: 3, id_oc: 8003, id_proveedor: 4, nro_guia_proveedor: 'GP-8003-1', id_empleado_receptor: 303, estado: 'CONFORME', observacion: 'Ingreso línea LEGO Icons verificado al 100%' },
+    { id: 4, id_oc: 8004, id_proveedor: 2, nro_guia_proveedor: 'GP-8004-1', id_empleado_receptor: 301, estado: 'PARCIAL', observacion: 'Faltaron 2 unidades de LEGO Camp Nou respecto a guía proveedor' },
+    { id: 5, id_oc: 8005, id_proveedor: 4, nro_guia_proveedor: 'GP-8005-1', id_empleado_receptor: 304, estado: 'CONFORME', observacion: 'Pallet sellado de fábrica LEGO Dinamarca' },
+    { id: 6, id_oc: 8006, id_proveedor: 3, nro_guia_proveedor: 'GP-8006-1', id_empleado_receptor: 302, estado: 'CONFORME', observacion: 'Recepción conforme línea Harry Potter' },
+    { id: 7, id_oc: 8007, id_proveedor: 2, nro_guia_proveedor: 'GP-8007-1', id_empleado_receptor: 303, estado: 'CON_OBSERVACIONES', observacion: 'Sello de seguridad húmedo en 1 unidad' },
+    { id: 8, id_oc: 8008, id_proveedor: 4, nro_guia_proveedor: 'GP-8008-1', id_empleado_receptor: 301, estado: 'CONFORME', observacion: 'Lote Ninjago ingresado a rack A-12' },
+    { id: 9, id_oc: 8009, id_proveedor: 3, nro_guia_proveedor: 'GP-8009-1', id_empleado_receptor: 304, estado: 'CONFORME', observacion: 'Reposición stock seguridad temporada Q4' },
+    { id: 10, id_oc: 8010, id_proveedor: 1, nro_guia_proveedor: 'GP-8010-1', id_empleado_receptor: 302, estado: 'CONFORME', observacion: 'Recepción validada por código EAN' },
   ];
   for (const rec of recepcionesData) {
     await prisma.log_recepcion.create({ data: rec });
   }
 
   const recepcionesDetalleData = [
-    { id: 1, recepcion_id: 1, id_producto: 75192, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
-    { id: 2, recepcion_id: 2, id_producto: 75288, cantidad_esperada: 15, cantidad_recibida: 15, cantidad_danada: 1, motivo_dano: 'Caja aplastada en esquina superior' },
-    { id: 3, recepcion_id: 3, id_producto: 10294, cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
-    { id: 4, recepcion_id: 4, id_producto: 10284, cantidad_esperada: 12, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: 'Faltante de origen en despacho proveedor' },
-    { id: 5, recepcion_id: 5, id_producto: 76240, cantidad_esperada: 20, cantidad_recibida: 20, cantidad_danada: 0, motivo_dano: null },
-    { id: 6, recepcion_id: 6, id_producto: 71043, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
-    { id: 7, recepcion_id: 7, id_producto: 10283, cantidad_esperada: 14, cantidad_recibida: 14, cantidad_danada: 1, motivo_dano: 'Empaque exterior con humedad' },
-    { id: 8, recepcion_id: 8, id_producto: 71741, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
-    { id: 9, recepcion_id: 9, id_producto: 10307, cantidad_esperada: 6, cantidad_recibida: 6, cantidad_danada: 0, motivo_dano: null },
-    { id: 10, recepcion_id: 10, id_producto: 21323, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 1, recepcion_id: 1, id_producto: 75192, id_bodega: 1, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 2, recepcion_id: 2, id_producto: 75288, id_bodega: 1, cantidad_esperada: 15, cantidad_recibida: 15, cantidad_danada: 1, motivo_dano: 'Caja aplastada en esquina superior' },
+    { id: 3, recepcion_id: 3, id_producto: 10294, id_bodega: 1, cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
+    { id: 4, recepcion_id: 4, id_producto: 10284, id_bodega: 1, cantidad_esperada: 12, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: 'Faltante de origen en despacho proveedor' },
+    { id: 5, recepcion_id: 5, id_producto: 76240, id_bodega: 1, cantidad_esperada: 20, cantidad_recibida: 20, cantidad_danada: 0, motivo_dano: null },
+    { id: 6, recepcion_id: 6, id_producto: 71043, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 7, recepcion_id: 7, id_producto: 10283, id_bodega: 2, cantidad_esperada: 14, cantidad_recibida: 14, cantidad_danada: 1, motivo_dano: 'Empaque exterior con humedad' },
+    { id: 8, recepcion_id: 8, id_producto: 71741, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 9, recepcion_id: 9, id_producto: 10307, id_bodega: 2, cantidad_esperada: 6, cantidad_recibida: 6, cantidad_danada: 0, motivo_dano: null },
+    { id: 10, recepcion_id: 10, id_producto: 21323, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
   ];
   for (const rdet of recepcionesDetalleData) {
     await prisma.log_recepcion_detalle.create({ data: rdet });
@@ -836,55 +858,39 @@ export async function main() {
   }
 
   const testPedidos = [
-    { id_pedido: 1, id_cliente: 1001, numero: 'PED-10294', estado: 'CONFIRMADO' },
-    { id_pedido: 2, id_cliente: 1002, numero: 'PED-10295', estado: 'CONFIRMADO' },
-    { id_pedido: 3, id_cliente: 1003, numero: 'PED-10296', estado: 'CONFIRMADO' },
-    { id_pedido: 4, id_cliente: 1005, numero: 'PED-10297', estado: 'CONFIRMADO' },
-    { id_pedido: 5, id_cliente: 1006, numero: 'PED-10298', estado: 'CONFIRMADO' },
-    { id_pedido: 6, id_cliente: 1007, numero: 'PED-10299', estado: 'CONFIRMADO' },
-    { id_pedido: 7, id_cliente: 1004, numero: 'PED-10300', estado: 'CONFIRMADO' },
-    { id_pedido: 8, id_cliente: 1008, numero: 'PED-10301', estado: 'CONFIRMADO' },
-    { id_pedido: 9, id_cliente: 1009, numero: 'PED-10302', estado: 'PENDIENTE_PAGO' },
-    { id_pedido: 10, id_cliente: 1010, numero: 'PED-10303', estado: 'CANCELADO' },
-    { id_pedido: 11, id_cliente: 1011, numero: 'PED-10304', estado: 'CONFIRMADO' },
-    { id_pedido: 12, id_cliente: 1001, numero: 'PED-10305', estado: 'CONFIRMADO' },
+    { id_pedido: 10294, id_cliente: 1001, numero: 'PED-10294', estado: 'CONFIRMADO' },
+    { id_pedido: 10295, id_cliente: 1002, numero: 'PED-10295', estado: 'CONFIRMADO' },
+    { id_pedido: 10296, id_cliente: 1003, numero: 'PED-10296', estado: 'CONFIRMADO' },
+    { id_pedido: 10297, id_cliente: 1005, numero: 'PED-10297', estado: 'CONFIRMADO' },
+    { id_pedido: 10298, id_cliente: 1006, numero: 'PED-10298', estado: 'CONFIRMADO' },
+    { id_pedido: 10299, id_cliente: 1007, numero: 'PED-10299', estado: 'CONFIRMADO' },
+    { id_pedido: 10300, id_cliente: 1004, numero: 'PED-10300', estado: 'CONFIRMADO' },
+    { id_pedido: 10301, id_cliente: 1008, numero: 'PED-10301', estado: 'CONFIRMADO' },
+    { id_pedido: 10302, id_cliente: 1009, numero: 'PED-10302', estado: 'PENDIENTE_PAGO' },
+    { id_pedido: 10303, id_cliente: 1010, numero: 'PED-10303', estado: 'CANCELADO' },
+    { id_pedido: 10304, id_cliente: 1011, numero: 'PED-10304', estado: 'CONFIRMADO' },
+    { id_pedido: 10305, id_cliente: 1001, numero: 'PED-10305', estado: 'CONFIRMADO' },
   ];
   for (const ped of testPedidos) {
     await prisma.ventasPedido.create({ data: ped });
   }
 
   const testPedidosDetalle = [
-    { id: 1, id_pedido: 1, id_producto: 75192, cantidad: 1 },
-    { id: 2, id_pedido: 2, id_producto: 75288, cantidad: 1 },
-    { id: 3, id_pedido: 2, id_producto: 76240, cantidad: 1 },
-    { id: 4, id_pedido: 3, id_producto: 71741, cantidad: 1 },
-    { id: 5, id_pedido: 4, id_producto: 10294, cantidad: 1 },
-    { id: 6, id_pedido: 5, id_producto: 71043, cantidad: 1 },
-    { id: 7, id_pedido: 6, id_producto: 10283, cantidad: 1 },
-    { id: 8, id_pedido: 7, id_producto: 10295, cantidad: 2 },
-    { id: 9, id_pedido: 8, id_producto: 10278, cantidad: 1 },
-    { id: 10, id_pedido: 8, id_producto: 10284, cantidad: 1 },
-    { id: 11, id_pedido: 11, id_producto: 76240, cantidad: 1 },
-    { id: 12, id_pedido: 12, id_producto: 75252, cantidad: 1 },
+    { id: 1, id_pedido: 10294, id_producto: 75192, cantidad: 1 },
+    { id: 2, id_pedido: 10295, id_producto: 75288, cantidad: 1 },
+    { id: 3, id_pedido: 10295, id_producto: 76240, cantidad: 1 },
+    { id: 4, id_pedido: 10296, id_producto: 71741, cantidad: 1 },
+    { id: 5, id_pedido: 10297, id_producto: 10294, cantidad: 1 },
+    { id: 6, id_pedido: 10298, id_producto: 71043, cantidad: 1 },
+    { id: 7, id_pedido: 10299, id_producto: 10283, cantidad: 1 },
+    { id: 8, id_pedido: 10300, id_producto: 10295, cantidad: 2 },
+    { id: 9, id_pedido: 10301, id_producto: 10278, cantidad: 1 },
+    { id: 10, id_pedido: 10301, id_producto: 10284, cantidad: 1 },
+    { id: 11, id_pedido: 10304, id_producto: 76240, cantidad: 1 },
+    { id: 12, id_pedido: 10305, id_producto: 75252, cantidad: 1 },
   ];
   for (const pdet of testPedidosDetalle) {
     await prisma.ventasPedidoDetalle.create({ data: pdet });
-  }
-
-  const testEmpleados = [
-    { id_empleado: 301, nombre: 'Carlos Gómez', cargo: 'Operador de Bodega Central' },
-    { id_empleado: 302, nombre: 'Juan Tapia', cargo: 'Operador de Picking Zona Norte' },
-    { id_empleado: 303, nombre: 'Loreto Silva', cargo: 'Operadora de Bodega Packing' },
-    { id_empleado: 304, nombre: 'Esteban Paredes', cargo: 'Operador de Recepción y Despacho' },
-    { id_empleado: 305, nombre: 'Maximiliano Pizarro', cargo: 'Coordinador de Despacho' },
-    { id_empleado: 306, nombre: 'Máximo Sazo', cargo: 'Administrador de Logística' },
-    { id_empleado: 307, nombre: 'Nicolás Rojas', cargo: 'Coordinador de Transporte' },
-    { id_empleado: 308, nombre: 'Daniela Infante', cargo: 'Analista de Control Logístico' },
-    { id_empleado: 309, nombre: 'Javier Catalán', cargo: 'Supervisor de Última Milla' },
-    { id_empleado: 310, nombre: 'Bastián Salinas', cargo: 'Especialista de Inventario y Cubicación' },
-  ];
-  for (const emp of testEmpleados) {
-    await prisma.rrhhEmpleado.create({ data: emp });
   }
 
   const testRoles = [
@@ -920,16 +926,16 @@ export async function main() {
   }
 
   const testComprasOc = [
-    { id_oc: 8001, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'EMITIDA' },
-    { id_oc: 8002, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
-    { id_oc: 8003, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
-    { id_oc: 8004, proveedor: 'Importadora Bricks Chile SpA', estado: 'PARCIAL' },
-    { id_oc: 8005, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
-    { id_oc: 8006, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
-    { id_oc: 8007, proveedor: 'Importadora Bricks Chile SpA', estado: 'EMITIDA' },
-    { id_oc: 8008, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
-    { id_oc: 8009, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
-    { id_oc: 8010, proveedor: 'Distribuidora Oficial Juguetes Sur Ltda.', estado: 'RECIBIDA' },
+    { id_oc: 8001, id_proveedor: 4, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'EMITIDA' },
+    { id_oc: 8002, id_proveedor: 3, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
+    { id_oc: 8003, id_proveedor: 4, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
+    { id_oc: 8004, id_proveedor: 2, proveedor: 'Importadora Bricks Chile SpA', estado: 'PARCIAL' },
+    { id_oc: 8005, id_proveedor: 4, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
+    { id_oc: 8006, id_proveedor: 3, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
+    { id_oc: 8007, id_proveedor: 2, proveedor: 'Importadora Bricks Chile SpA', estado: 'EMITIDA' },
+    { id_oc: 8008, id_proveedor: 4, proveedor: 'LEGO System A/S (Billund, Dinamarca)', estado: 'RECIBIDA' },
+    { id_oc: 8009, id_proveedor: 3, proveedor: 'LEGO Distribution LATAM (México)', estado: 'EMITIDA' },
+    { id_oc: 8010, id_proveedor: 1, proveedor: 'Distribuidora Oficial Juguetes Sur Ltda.', estado: 'RECIBIDA' },
   ];
   for (const oc of testComprasOc) {
     await prisma.comprasOc.create({ data: oc });

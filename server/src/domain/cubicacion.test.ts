@@ -92,6 +92,14 @@ describe('ELT-34 · Tests Unitarios de Dominio (Logística y Transporte)', () =>
       const res = validarTransicionEstado('En tránsito', 'Preparado');
       assert.equal(res.valido, false);
     });
+
+    it('confirma o rechaza el egreso de Inventario antes de preparar la guía', () => {
+      assert.equal(validarTransicionEstado('Pendiente de stock', 'Preparado').valido, true);
+      assert.equal(validarTransicionEstado('Pendiente de stock', 'Error de stock').valido, true);
+      assert.equal(validarTransicionEstado('Error de stock', 'Pendiente de stock').valido, true);
+      assert.equal(validarTransicionEstado('Pendiente de stock', 'Despachado').valido, false);
+      assert.equal(validarTransicionEstado('Error de stock', 'Despachado').valido, false);
+    });
   });
 
   describe('4. Picking (HU-03) y Recepción de Órdenes de Compra (HU-06)', () => {

@@ -147,6 +147,33 @@ export class LogisticaRepository {
   }
 
   /**
+   * Peso y medidas de los productos, que viven en el maestro de Inventario.
+   * Por ahora se leen de test_log_inv_producto; se reemplaza por GET /productos/:id de Inventario.
+   */
+  async getFichasProducto(ids: number[]) {
+    const fichas = new Map<
+      number,
+      { peso_unitario_kg: number | null; largo_cm: number | null; alto_cm: number | null; ancho_cm: number | null }
+    >();
+    if (ids.length === 0) return fichas;
+    const aNumero = (v: Prisma.Decimal | null) => (v === null ? null : Number(v));
+    try {
+      const productos = await prisma.invProducto.findMany({ where: { id_producto: { in: ids } } });
+      for (const p of productos) {
+        fichas.set(p.id_producto, {
+          peso_unitario_kg: aNumero(p.peso_unitario_kg),
+          largo_cm: aNumero(p.largo_cm),
+          alto_cm: aNumero(p.alto_cm),
+          ancho_cm: aNumero(p.ancho_cm),
+        });
+      }
+    } catch (err) {
+      // Sin BD: las OT de fallbackData ya traen sus medidas.
+    }
+    return fichas;
+  }
+
+  /**
    * Verifica si existe cobertura vigente para un servicio y comuna.
    */
   async getCoberturaActiva(servicio_id: number, comuna_id: number) {

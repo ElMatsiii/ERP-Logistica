@@ -187,6 +187,8 @@ export function generarIdGuia(): string {
 // ============================================================================
 
 export type EstadoEnvio =
+  | 'Pendiente de stock'
+  | 'Error de stock'
   | 'Preparado'
   | 'Asignado'
   | 'Despachado'
@@ -196,6 +198,9 @@ export type EstadoEnvio =
   | 'Devuelto';
 
 export const TRANSICIONES_ESTADO_ENVIO: Record<EstadoEnvio, EstadoEnvio[]> = {
+  // La guía espera que Inventario confirme el egreso; si falla, se reintenta desde 'Error de stock'.
+  'Pendiente de stock': ['Preparado', 'Error de stock'],
+  'Error de stock': ['Pendiente de stock', 'Preparado'],
   Preparado: ['Asignado', 'Despachado'],
   Asignado: ['Despachado'],
   Despachado: ['En tránsito', 'Entregado conforme', 'Entrega Fallida'],

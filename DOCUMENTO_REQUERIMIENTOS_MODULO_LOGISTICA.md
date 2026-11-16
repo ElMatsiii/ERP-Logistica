@@ -60,7 +60,7 @@ flowchart TB
 ### Input *(lo que Ventas necesita de Logística / lo que Logística le entrega a Ventas)*:
 * **Código de seguimiento oficial del transportista** *(Tabla: `log_guia_despacho.num_seguimiento`, `log_guia_despacho.id`)*
 * **Fecha estimada de entrega comprometida** *(Calculada a partir de `log_servicio.dias_transito_comprometidos` y `log_guia_despacho.fecha_emision`)*
-* **Estado de despacho en tiempo real** *(Tabla: `log_guia_despacho.estado_actual`: `'Preparado'`, `'Despachado'`, `'En tránsito'`, `'Entregado conforme'`, `'Entrega Fallida'`)*
+* **Estado de despacho en tiempo real** *(Tabla: `log_guia_despacho.estado_actual`: `'Pendiente de stock'` y `'Error de stock'` (mientras Inventario confirma el egreso), `'Preparado'`, `'Despachado'`, `'En tránsito'`, `'Entregado conforme'`, `'Entrega Fallida'`)*
 * **Historial de eventos de transporte** *(Tabla: `log_evento_tracking.fecha_hora`, `log_evento_tracking.estado`, `log_evento_tracking.observacion`)*
 * **Costo de envío cotizado y aplicado** *(Tabla: `log_guia_despacho.costo_envio`)*
 
@@ -90,7 +90,7 @@ sequenceDiagram
 ### Subproceso 2.1: Egreso de Stock por Despacho de Pedidos
 
 #### Output *(lo que Inventario le entrega a Logística / lo que Logística necesita recibir)*:
-* **Catálogo maestro de sets LEGO y fichas dimensionales** *(Tabla: `inventario.inv_producto.id_producto`, `inv_producto.sku`, `inv_producto.nombre_set`, `inv_producto.cant_piezas`)*
+* **Catálogo maestro de sets LEGO y fichas dimensionales** *(Tabla: `inventario.inv_producto.id_producto`, `inv_producto.sku`, `inv_producto.nombre_set`, `inv_producto.cant_piezas`, `inv_producto.peso_unitario_kg`, `inv_producto.largo_cm`, `inv_producto.alto_cm`, `inv_producto.ancho_cm`). Logística no guarda una copia del peso ni de las medidas en `log_ot_picking_detalle`: los lee del maestro de Inventario*
 * **Disponibilidad física de existencias por bodega** *(Tabla: `inventario.inv_stock_bodega.cantidad_disponible`, `inv_stock_bodega.id_bodega`)*
 * **Ubicación física en racks para recolección** *(Tabla: `inventario.inv_bodegas.id_bodega`, `inv_bodegas.ubicacion_fisica`)*
 * **Validación de picking de bodega** *(Tabla: `inventario.inv_despachos_operario.observaciones_picking`)*
@@ -110,12 +110,12 @@ sequenceDiagram
 ### Subproceso 2.2: Ingreso de Stock por Recepción en Muelle
 
 #### Output *(lo que Inventario le entrega a Logística / lo que Logística necesita recibir)*:
-* **Bodega y rack asignado para acopio** *(Tabla: `inventario.inv_bodegas.id_bodega`, `inv_bodegas.ubicacion_fisica`)*
+* **Bodega asignada para acopio** *(Tabla: `inventario.inv_bodegas.id_bodega`, `inv_bodegas.ubicacion_fisica`; Logística la guarda por línea en `log_recepcion_detalle.id_bodega`)*
 
 #### Input *(lo que Inventario necesita de Logística / lo que Logística le entrega a Inventario)*:
 * **Registro de movimiento de ingreso tipo ENTRADA** *(Tabla: `inventario.inv_movimiento.tipo_operacion = 'ENTRADA'`)*
 * **Cantidad neta de sets LEGO aptos para stock** *(Calculado: `log_recepcion_detalle.cantidad_recibida - log_recepcion_detalle.cantidad_danada`)*
-* **Folio de acta de recepción en muelle** *(Tabla: `log_recepcion.id`, `log_recepcion.fecha_recepcion`)*
+* **Folio de acta de recepción en muelle** *(Tabla: `log_recepcion.id`, `log_recepcion.fecha_recepcion`, `log_recepcion.id_proveedor`, `log_recepcion.nro_guia_proveedor`)*
 
 ```mermaid
 sequenceDiagram
@@ -149,7 +149,7 @@ sequenceDiagram
 > *(Adjuntar BPM de Compras: Proceso "Emisión de Orden de Compra y Notificación de Arribo a Bodega Central").*
 
 ### Input *(lo que Compras necesita de Logística / lo que Logística le entrega a Compras)*:
-* **Acta de recepción física contrastada en muelle** *(Tabla: `log_recepcion.id`, `log_recepcion.id_oc`, `log_recepcion.fecha_recepcion`)*
+* **Acta de recepción física contrastada en muelle** *(Tabla: `log_recepcion.id`, `log_recepcion.id_oc`, `log_recepcion.id_proveedor`, `log_recepcion.nro_guia_proveedor`, `log_recepcion.fecha_recepcion`). Cada guía del proveedor se registra una sola vez por OC*
 * **Cantidades efectivamente recibidas por producto** *(Tabla: `log_recepcion_detalle.cantidad_recibida`)*
 * **Registro de unidades dañadas, aplastadas o rotas** *(Tabla: `log_recepcion_detalle.cantidad_danada`, `log_recepcion_detalle.motivo_dano`)*
 * **Estado de cumplimiento de la OC** *(Tabla: `log_recepcion.estado`: `'COMPLETA'`, `'PARCIAL_CON_FALTANTE'`, `'RECHAZADA_POR_DANO'`)*
@@ -222,8 +222,8 @@ sequenceDiagram
 > *(Adjuntar BPM de RRHH: Proceso "Gestión de Personal, Asignación de Roles del Sistema y Turnos").*
 
 ### Input *(lo que RRHH necesita de Logística / lo que Logística le entrega a RRHH)*:
-* **Identificación del operador asignado a cada OT de Picking** *(Tabla: `log_ot_picking.id_operador`, `log_ot_picking.nombre_operador`)*
-* **Identificación del empleado receptor en muelle** *(Tabla: `log_recepcion.id_empleado_receptor`)*
+* **Identificación del operador asignado a cada OT de Picking** *(Tabla: `log_ot_picking.id_operador`, `log_ot_picking.nombre_operador`; `id_operador` debe existir en `rrhh.empleado`)*
+* **Identificación del empleado receptor en muelle** *(Tabla: `log_recepcion.id_empleado_receptor`, que debe existir en `rrhh.empleado`)*
 * **Usuario responsable de cada evento de bitácora** *(Tabla: `log_evento_tracking.usuario_responsable`)*
 * **Usuario ejecutor de egresos e ingresos de existencias** *(Tabla: `test_log_inv_mov.id_usuario`)*
 

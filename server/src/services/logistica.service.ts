@@ -70,19 +70,25 @@ export class LogisticaService {
       throw new ValidationError(`La orden de trabajo ${id} no existe`, 404);
     }
 
+    // Peso y medidas de cada producto desde el maestro de Inventario
+    const fichas = await this.repository.getFichasProducto(
+      (ot.detalles || []).map((d: any) => d.id_producto)
+    );
+    const detalles = (ot.detalles || []).map((d: any) => ({ ...d, ...fichas.get(d.id_producto) }));
+
     // Calcular dimensiones sugeridas basadas en los productos del pedido
     let pesoSugerido = 0;
     let maxLargo = 25;
     let maxAlto = 20;
     let maxAncho = 15;
 
-    if (ot.detalles && ot.detalles.length > 0) {
-      pesoSugerido = ot.detalles.reduce((acc: number, curr: any) => {
+    if (detalles.length > 0) {
+      pesoSugerido = detalles.reduce((acc: number, curr: any) => {
         const peso = Number(curr.peso_unitario_kg || 1.5) * curr.cant_solicitada;
         return acc + peso;
       }, 0);
 
-      ot.detalles.forEach((item: any) => {
+      detalles.forEach((item: any) => {
         if (item.largo_cm && Number(item.largo_cm) > maxLargo) maxLargo = Number(item.largo_cm);
         if (item.alto_cm && Number(item.alto_cm) > maxAlto) maxAlto = Number(item.alto_cm);
         if (item.ancho_cm && Number(item.ancho_cm) > maxAncho) maxAncho = Number(item.ancho_cm);
@@ -91,6 +97,7 @@ export class LogisticaService {
 
     return {
       ...ot,
+      detalles,
       empaque_sugerido: {
         largo_cm: Number(maxLargo.toFixed(1)),
         alto_cm: Number(maxAlto.toFixed(1)),
@@ -388,7 +395,8 @@ export class LogisticaService {
 
     const recepcionData: RecepcionData = {
       id_oc: input.id_oc,
-      id_empleado_receptor: input.id_empleado_receptor || 12,
+      // 304 existe en test_log_rrhh_empleado (FK). Se elimina en el punto 17 (empleado obligatorio).
+      id_empleado_receptor: input.id_empleado_receptor || 304,
       estado: resultadoDominio.estado_recepcion,
       observacion: input.observacion || `Recepción en muelle ${resultadoDominio.estado_recepcion}`,
       detalles: input.lineas.map((l) => ({
