@@ -1,6 +1,33 @@
 version: '3.8'
 
 services:
+  # ----------------------------------------------------------------------------
+  # Backend API REST de Logística y Transporte (Puerto 3001)
+  # Permite a otros módulos (Ventas, Inventario, RRHH) consumir los endpoints
+  # ----------------------------------------------------------------------------
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: lesgo_logistica_server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - CLIENT_URL=http://localhost:5173
+      - DATABASE_URL=postgresql://si2_22026:SuContrasenaSegura%232026!@ep-royal-glade-ac55fitc-pooler.sa-east-1.aws.neon.tech:5432/si2_22026?schema=logistica&sslmode=require
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ----------------------------------------------------------------------------
+  # Base de Datos PostgreSQL Local (Opcional para desarrollo sin internet)
+  # ----------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: lesgo_postgres

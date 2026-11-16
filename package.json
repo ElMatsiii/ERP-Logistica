@@ -17,6 +17,9 @@
     "test": "tsx --test server/src/domain/cubicacion.test.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
+    "docker:server": "docker compose up --build -d server",
+    "docker:server:logs": "docker compose logs -f server",
+    "docker:server:stop": "docker compose stop server",
     "build": "npm --prefix server run build && npm --prefix client run build"
   },
   "keywords": [

@@ -1,0 +1,22 @@
+# Dependencias y artefactos compilados
+node_modules
+*/node_modules
+server/dist
+client/dist
+dist
+
+# Frontend (no requerido para construir el backend)
+client
+
+# Git y configuración de editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Entorno y logs
+.env
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
