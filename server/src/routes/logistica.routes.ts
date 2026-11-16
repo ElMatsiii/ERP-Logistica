@@ -37,6 +37,10 @@ export function createLogisticaRouter(controller?: LogisticaController): Router 
   router.post('/recepciones', ctrl.registrarRecepcion);
   router.get('/recepciones', ctrl.getHistorialRecepciones);
 
+  // Auxiliares de recepción: receptores (RRHH) y bodegas de ingreso (Inventario)
+  router.get('/empleados', ctrl.getEmpleados);
+  router.get('/bodegas', ctrl.getBodegas);
+
   // 8. Estado de la integración con Inventario (modo real o simulado, y si responde)
   router.get('/integraciones/inventario', ctrl.getEstadoInventario);
 

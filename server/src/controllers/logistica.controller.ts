@@ -172,6 +172,28 @@ export class LogisticaController {
     }
   };
 
+  getEmpleados = async (_req: Request, res: Response) => {
+    try {
+      res.json(await this.service.getEmpleados());
+    } catch (error: any) {
+      console.error('Error al obtener empleados:', error);
+      res.status(500).json({ error: 'Error al consultar empleados', detalle: error.message });
+    }
+  };
+
+  /** Bodegas de Inventario (503 si Inventario no responde) */
+  getBodegas = async (_req: Request, res: Response) => {
+    try {
+      res.json(await this.service.getBodegas());
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+      console.error('Error al obtener bodegas:', error);
+      res.status(500).json({ error: 'Error al consultar bodegas', detalle: error.message });
+    }
+  };
+
   /** Modo del cliente de Inventario (real o simulado) y si responde. 503 si no responde. */
   getEstadoInventario = async (_req: Request, res: Response) => {
     const estado = await obtenerClienteInventario().verificarConexion();

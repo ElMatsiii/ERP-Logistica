@@ -67,6 +67,11 @@ Este módulo implementa la solución integral de **Logística y Transporte** par
    - En una única transacción Prisma `$transaction` se crean la guía (en `Pendiente de stock`), los bultos y el evento inicial en bitácora.
    - Luego se pide a Inventario el egreso (`POST /movimientos/despacho`) con **todas** las líneas de la OT y lo recolectado tal cual (0 si no se encontró). Si confirma, la guía pasa a `Preparado`; si falla, queda en `Error de stock` y se reintenta con `POST /api/logistica/guias/:id/reintentar-stock` (Inventario no descuenta dos veces la misma guía).
    - Mientras la guía está en `Pendiente de stock` o `Error de stock` no se registran eventos de transporte.
+6. **Recepción en Muelle con Ingreso en Inventario (HU-06)**:
+   - Por línea: `cantidad_danada <= cantidad_recibida <= cantidad_esperada`. Las unidades aptas son `recibida - dañada`.
+   - Son obligatorios el empleado receptor (debe existir en RRHH), el N° de guía de despacho del proveedor y la bodega de Inventario en cada línea con unidades aptas. El proveedor se toma de la OC.
+   - La misma guía del proveedor se registra una sola vez por OC (`HTTP 409`).
+   - Primero Inventario registra el ingreso (`POST /movimientos/recepcion`) de las unidades aptas por producto y bodega; si no responde (`HTTP 503`) o rechaza los datos (`HTTP 422`/`409`), no se guarda nada y se puede volver a confirmar. Luego se guarda el acta. Si todas las unidades llegaron dañadas, se guarda el acta sin llamar a Inventario.
 
 ---
 
@@ -145,5 +150,10 @@ Logística consulta y confirma stock en la API REST de Inventario (`server/src/i
 | `POST` | `/api/logistica/guias/:id/reintentar-stock` | Reintenta la confirmación de stock de una guía en `Pendiente de stock` o `Error de stock` |
 | `GET` | `/api/logistica/tracking` | Consulta con filtros (`busqueda`, `estado`, `transportista`, `fecha`) |
 | `POST` | `/api/logistica/tracking/:id_guia/evento` | Inserción en bitácora append-only y actualización de estado |
+| `GET` | `/api/logistica/compras-pendientes` | Órdenes de compra para recepción en muelle |
+| `POST` | `/api/logistica/recepciones` | Registro de recepción en muelle e ingreso de las unidades aptas en Inventario |
+| `GET` | `/api/logistica/recepciones` | Historial de actas de recepción |
+| `GET` | `/api/logistica/empleados` | Empleados (RRHH) para elegir al receptor |
+| `GET` | `/api/logistica/bodegas` | Bodegas de Inventario donde ingresa la mercadería |
 | `GET` | `/api/logistica/integraciones/inventario` | Modo del cliente de Inventario (real o simulado) y si responde |
 | `GET` | `/api/health` | Estado del servicio y conexión a BD |

@@ -8,6 +8,9 @@ import {
   RegistrarRecepcionPayload,
   RecepcionRegistro,
   ConfirmacionStock,
+  IngresoInventario,
+  Empleado,
+  Bodega,
 } from '../types';
 
 const API_BASE = '/api/logistica';
@@ -166,7 +169,7 @@ export async function fetchCompraById(id: number): Promise<OrdenCompra> {
 
 export async function registrarRecepcionMuelle(
   payload: RegistrarRecepcionPayload
-): Promise<{ mensaje: string; recepcion: RecepcionRegistro; resumen: any }> {
+): Promise<{ mensaje: string; recepcion: RecepcionRegistro; resumen: any; inventario: IngresoInventario }> {
   const res = await fetch(`${API_BASE}/recepciones`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -182,6 +185,26 @@ export async function registrarRecepcionMuelle(
   }
 
   return data;
+}
+
+/** Empleados para elegir al receptor en muelle */
+export async function fetchEmpleados(): Promise<Empleado[]> {
+  const res = await fetch(`${API_BASE}/empleados`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al obtener empleados');
+  }
+  return res.json();
+}
+
+/** Bodegas de Inventario donde ingresa la mercadería recibida */
+export async function fetchBodegas(): Promise<Bodega[]> {
+  const res = await fetch(`${API_BASE}/bodegas`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al obtener bodegas de Inventario');
+  }
+  return res.json();
 }
 
 export async function fetchHistorialRecepciones(): Promise<RecepcionRegistro[]> {

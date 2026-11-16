@@ -18,14 +18,20 @@ import {
 import {
   OrdenCompra,
   RecepcionRegistro,
-  LineaRecepcionInput,
+  LineaRecepcionPayload,
+  Empleado,
+  Bodega,
 } from '../types';
 import {
   fetchComprasPendientes,
   fetchCompraById,
   registrarRecepcionMuelle,
   fetchHistorialRecepciones,
+  fetchEmpleados,
+  fetchBodegas,
 } from '../api/logisticaApi';
+
+type ConteoLinea = { recibida: number; danada: number; motivo: string; bodega: number | null };
 
 export const RecepcionMuelle: React.FC = () => {
   // Estados para datos
@@ -39,11 +45,17 @@ export const RecepcionMuelle: React.FC = () => {
   const [ocActual, setOcActual] = useState<OrdenCompra | null>(null);
 
   // Formulario de recepción por línea
-  const [conteoLineas, setConteoLineas] = useState<Record<number, { recibida: number; danada: number; motivo: string }>>({});
+  const [conteoLineas, setConteoLineas] = useState<Record<number, ConteoLinea>>({});
   const [muelleAsignado, setMuelleAsignado] = useState<string>('Andén 1 (Muelle Central)');
-  const [operadorNombre, setOperadorNombre] = useState<string>('P. Pérez (Operador Bodega)');
-  const [guiaProveedor, setGuiaProveedor] = useState<string>('GD-LEGO-2026-991');
+  const [guiaProveedor, setGuiaProveedor] = useState<string>('');
   const [observacionGeneral, setObservacionGeneral] = useState<string>('');
+
+  // Receptor (RRHH) y bodegas de ingreso (Inventario)
+  const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [receptorId, setReceptorId] = useState<number | null>(null);
+  const [bodegas, setBodegas] = useState<Bodega[]>([]);
+  const [errorBodegas, setErrorBodegas] = useState<string | null>(null);
+  const receptor = empleados.find((e) => e.id_empleado === receptorId) || null;
 
   // Estados de confirmación y vista
   const [registrando, setRegistrando] = useState<boolean>(false);
@@ -76,8 +88,24 @@ export const RecepcionMuelle: React.FC = () => {
     }
   };
 
+  // Empleados y bodegas se cargan aparte: si Inventario no responde, el resto de la pantalla funciona igual
+  const cargarAuxiliares = async () => {
+    try {
+      setEmpleados(await fetchEmpleados());
+    } catch (err: any) {
+      console.error('Error al cargar empleados:', err);
+    }
+    try {
+      setBodegas(await fetchBodegas());
+      setErrorBodegas(null);
+    } catch (err: any) {
+      setErrorBodegas(err.message || 'No se pudieron cargar las bodegas de Inventario.');
+    }
+  };
+
   useEffect(() => {
     cargarDatos();
+    cargarAuxiliares();
   }, []);
 
   // Al cambiar la OC seleccionada, inicializar el conteo sugerido
@@ -88,24 +116,25 @@ export const RecepcionMuelle: React.FC = () => {
     if (oc) {
       setOcActual(oc);
       // Inicializar el conteo de cada línea
-      const inicial: Record<number, { recibida: number; danada: number; motivo: string }> = {};
+      const inicial: Record<number, ConteoLinea> = {};
       oc.detalles.forEach((d) => {
         inicial[d.id_producto] = {
           recibida: d.cantidad_esperada, // Por defecto propone recibir todo conforme
           danada: 0,
           motivo: '',
+          bodega: bodegas[0]?.id_bodega ?? null, // Por defecto, la primera bodega de Inventario
         };
       });
       setConteoLineas(inicial);
       setErrorRecepcion(null);
       setExitoRecepcion(null);
     }
-  }, [ocSeleccionadaId, compras]);
+  }, [ocSeleccionadaId, compras, bodegas]);
 
   // Actualizar conteo de una línea
-  const handleCambioConteo = (id_producto: number, campo: 'recibida' | 'danada' | 'motivo', valor: any) => {
+  const handleCambioConteo = (id_producto: number, campo: keyof ConteoLinea, valor: any) => {
     setConteoLineas((prev) => {
-      const actual = prev[id_producto] || { recibida: 0, danada: 0, motivo: '' };
+      const actual = prev[id_producto] || { recibida: 0, danada: 0, motivo: '', bodega: null };
       return {
         ...prev,
         [id_producto]: {
@@ -125,6 +154,7 @@ export const RecepcionMuelle: React.FC = () => {
         recibida: cantidadEsperada,
         danada: 0,
         motivo: '',
+        bodega: prev[id_producto]?.bodega ?? bodegas[0]?.id_bodega ?? null,
       },
     }));
   };
@@ -138,7 +168,7 @@ export const RecepcionMuelle: React.FC = () => {
 
   if (ocActual && ocActual.detalles) {
     ocActual.detalles.forEach((d) => {
-      const c = conteoLineas[d.id_producto] || { recibida: 0, danada: 0, motivo: '' };
+      const c = conteoLineas[d.id_producto] || { recibida: 0, danada: 0, motivo: '', bodega: null };
       totalEsperado += d.cantidad_esperada;
       totalRecibido += Number(c.recibida) || 0;
       totalDanado += Number(c.danada) || 0;
@@ -152,6 +182,9 @@ export const RecepcionMuelle: React.FC = () => {
       } else if (Number(c.recibida) > d.cantidad_esperada) {
         tieneErroresValidacion = true;
         mensajeErrorValidacion = `En el set #${d.id_producto}, la cantidad recibida (${c.recibida}) supera lo esperado en la OC (${d.cantidad_esperada}).`;
+      } else if (Number(c.recibida) - Number(c.danada) > 0 && !c.bodega) {
+        tieneErroresValidacion = true;
+        mensajeErrorValidacion = `Seleccione la bodega de ingreso del set #${d.id_producto}.`;
       }
     });
   }
@@ -174,14 +207,25 @@ export const RecepcionMuelle: React.FC = () => {
       return;
     }
 
+    if (!receptorId) {
+      setErrorRecepcion('Seleccione el operador receptor en muelle.');
+      return;
+    }
+
+    if (!guiaProveedor.trim()) {
+      setErrorRecepcion('Ingrese el N° de guía de despacho del proveedor.');
+      return;
+    }
+
     try {
       setRegistrando(true);
       setErrorRecepcion(null);
 
-      const lineasPayload: LineaRecepcionInput[] = ocActual.detalles.map((d) => {
-        const c = conteoLineas[d.id_producto] || { recibida: 0, danada: 0, motivo: '' };
+      const lineasPayload: LineaRecepcionPayload[] = ocActual.detalles.map((d) => {
+        const c = conteoLineas[d.id_producto] || { recibida: 0, danada: 0, motivo: '', bodega: null };
         return {
           id_producto: d.id_producto,
+          id_bodega: c.bodega,
           cantidad_esperada: d.cantidad_esperada,
           cantidad_recibida: Number(c.recibida) || 0,
           cantidad_danada: Number(c.danada) || 0,
@@ -191,12 +235,14 @@ export const RecepcionMuelle: React.FC = () => {
 
       const respuesta = await registrarRecepcionMuelle({
         id_oc: ocActual.id_oc,
-        id_empleado_receptor: 304,
-        observacion: observacionGeneral.trim() || `Recepción en ${muelleAsignado} con guía ${guiaProveedor}`,
+        id_empleado_receptor: receptorId,
+        nro_guia_proveedor: guiaProveedor.trim().toUpperCase(),
+        observacion: observacionGeneral.trim() || `Recepción en ${muelleAsignado}`,
         lineas: lineasPayload,
       });
 
       setExitoRecepcion(respuesta);
+      setGuiaProveedor('');
       // Recargar datos para actualizar historial y estados de OCs
       await cargarDatos();
     } catch (err: any) {
@@ -226,7 +272,7 @@ export const RecepcionMuelle: React.FC = () => {
               Recepción de Mercadería en Muelle de Descarga
             </h1>
             <p className="text-red-100 text-sm mt-1 max-w-2xl">
-              Contrasta físicamente los sets LEGO arribados contra la Orden de Compra (OC). Clasifica cajas dañadas e ingresa automáticamente las unidades aptas como <strong className="text-white">ENTRADA</strong> en el stock de Inventario.
+              Contrasta físicamente los sets LEGO arribados contra la Orden de Compra (OC). Clasifica cajas dañadas e registra en Inventario el <strong className="text-white">INGRESO</strong> de las unidades aptas, en la bodega indicada por línea.
             </p>
           </div>
 
@@ -272,7 +318,7 @@ export const RecepcionMuelle: React.FC = () => {
           </div>
           <div className="px-4">
             <p className="text-xs text-slate-500 font-medium">Receptor en Muelle</p>
-            <p className="text-lg font-bold text-slate-800 truncate">{operadorNombre.split(' ')[0]} P.</p>
+            <p className="text-lg font-bold text-slate-800 truncate">{receptor ? receptor.nombre : 'Sin asignar'}</p>
           </div>
           <div className="px-4">
             <p className="text-xs text-slate-500 font-medium">Muelle Asignado</p>
@@ -306,7 +352,13 @@ export const RecepcionMuelle: React.FC = () => {
                   ¡Recepción en Muelle Confirmada con Éxito!
                 </h3>
                 <p className="text-sm text-emerald-700 mt-0.5">
-                  Acta registrada bajo el folio <strong>REC-00{exitoRecepcion.recepcion?.id || '1'}</strong>. Las existencias físicamente aptas han sido ingresadas a Inventario con movimiento tipo <strong className="text-emerald-900">ENTRADA</strong>.
+                  Acta registrada bajo el folio <strong>REC-00{exitoRecepcion.recepcion?.id || '1'}</strong>
+                  {exitoRecepcion.recepcion?.nro_guia_proveedor && <> (guía del proveedor <strong>{exitoRecepcion.recepcion.nro_guia_proveedor}</strong>)</>}.{' '}
+                  {exitoRecepcion.inventario?.registrado ? (
+                    <>Inventario registró el ingreso de las unidades aptas (movimiento <strong className="text-emerald-900">#{exitoRecepcion.inventario.id_movimiento_ingreso}</strong>).</>
+                  ) : (
+                    <>{exitoRecepcion.inventario?.motivo || 'No se registró ingreso en Inventario.'}</>
+                  )}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                   <span className="bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-1 rounded">
@@ -417,13 +469,31 @@ export const RecepcionMuelle: React.FC = () => {
               </div>
 
               <p className="text-xs text-slate-500 mb-4">
-                Ingresa la cantidad física efectivamente descargada y consigna si existen cajas golpeadas, aplastadas o con sellos rotos. Solo las unidades <strong>Aptas</strong> ingresarán como stock disponible.
+                Ingresa la cantidad física efectivamente descargada y consigna si existen cajas golpeadas, aplastadas o con sellos rotos. Solo las unidades <strong>Aptas</strong> ingresarán como stock disponible, en la bodega de Inventario que elijas por línea.
               </p>
+
+              {errorBodegas && (
+                <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start justify-between gap-3">
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <span>
+                      {errorBodegas} Sin bodegas no se pueden ingresar unidades aptas a Inventario.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={cargarAuxiliares}
+                    className="font-bold text-amber-800 hover:underline whitespace-nowrap"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
 
               {/* Lista de productos */}
               <div className="space-y-4">
                 {ocActual?.detalles?.map((det, index) => {
-                  const conteo = conteoLineas[det.id_producto] || { recibida: det.cantidad_esperada, danada: 0, motivo: '' };
+                  const conteo = conteoLineas[det.id_producto] || { recibida: det.cantidad_esperada, danada: 0, motivo: '', bodega: null };
                   const aptas = Math.max(0, (Number(conteo.recibida) || 0) - (Number(conteo.danada) || 0));
                   const hayDano = Number(conteo.danada) > 0;
                   const hayFaltante = Number(conteo.recibida) < det.cantidad_esperada;
@@ -471,7 +541,7 @@ export const RecepcionMuelle: React.FC = () => {
                       </div>
 
                       {/* Inputs de conteo */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                         {/* Cantidad recibida */}
                         <div>
                           <label className="block text-slate-600 font-bold mb-1">
@@ -518,8 +588,32 @@ export const RecepcionMuelle: React.FC = () => {
                               <CheckCircle className="w-4 h-4 mr-1 text-emerald-600" />
                               {aptas} un.
                             </span>
-                            <span className="text-[10px] text-emerald-700 uppercase font-semibold">ENTRADA</span>
+                            <span className="text-[10px] text-emerald-700 uppercase font-semibold">INGRESO</span>
                           </div>
+                        </div>
+
+                        {/* Bodega de Inventario donde ingresan las aptas */}
+                        <div>
+                          <label className="block text-slate-600 font-bold mb-1">
+                            Bodega de Ingreso:
+                          </label>
+                          <select
+                            value={conteo.bodega ?? ''}
+                            onChange={(e) =>
+                              handleCambioConteo(det.id_producto, 'bodega', e.target.value ? Number(e.target.value) : null)
+                            }
+                            disabled={aptas === 0}
+                            className={`w-full px-2.5 py-1.5 rounded-lg border bg-white text-slate-800 text-xs font-medium disabled:bg-slate-100 disabled:text-slate-400 ${
+                              aptas > 0 && !conteo.bodega ? 'border-red-400' : 'border-slate-300'
+                            }`}
+                          >
+                            <option value="">{aptas === 0 ? 'Sin unidades aptas' : 'Seleccionar bodega...'}</option>
+                            {bodegas.map((b) => (
+                              <option key={b.id_bodega} value={b.id_bodega}>
+                                {b.nombre_bodega}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
@@ -578,15 +672,40 @@ export const RecepcionMuelle: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">Operador Receptor (RRHH):</label>
-                  <div className="flex items-center space-x-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                    <UserCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="font-bold text-slate-800">{operadorNombre}</span>
+                  <label className="block text-slate-600 font-bold mb-1">Operador Receptor (RRHH): *</label>
+                  <div className="flex items-center space-x-2">
+                    <UserCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <select
+                      value={receptorId ?? ''}
+                      onChange={(e) => {
+                        setReceptorId(e.target.value ? Number(e.target.value) : null);
+                        setErrorRecepcion(null);
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-slate-800 font-medium"
+                    >
+                      <option value="">Seleccionar receptor...</option>
+                      {empleados.map((emp) => (
+                        <option key={emp.id_empleado} value={emp.id_empleado}>
+                          {emp.nombre} — {emp.cargo} (#{emp.id_empleado})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1">N° Guía de Fábrica / Proveedor:</label>
+                  <label className="block text-slate-600 font-bold mb-1">Proveedor (desde la OC):</label>
+                  <div className="flex items-center space-x-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                    <Building2 className="w-4 h-4 text-[#e52521]" />
+                    <span className="font-bold text-slate-800">
+                      {ocActual?.proveedor || '—'}
+                      {ocActual?.id_proveedor ? ` (#${ocActual.id_proveedor})` : ''}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-bold mb-1">N° Guía de Despacho del Proveedor: *</label>
                   <input
                     type="text"
                     value={guiaProveedor}
@@ -630,7 +749,7 @@ export const RecepcionMuelle: React.FC = () => {
                   <span className="font-bold">-{totalDanado} un.</span>
                 </div>
                 <div className="pt-2 border-t border-slate-700 flex justify-between items-baseline">
-                  <span className="font-bold text-emerald-400 text-sm">Alta a Inventario (ENTRADA):</span>
+                  <span className="font-bold text-emerald-400 text-sm">Ingreso a Inventario:</span>
                   <span className="font-black text-2xl text-emerald-300">{totalAptoInventario} un.</span>
                 </div>
               </div>
@@ -668,7 +787,7 @@ export const RecepcionMuelle: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmarRecepcion}
-                disabled={registrando || tieneErroresValidacion || totalRecibido <= 0}
+                disabled={registrando || tieneErroresValidacion || totalRecibido <= 0 || !receptorId || !guiaProveedor.trim()}
                 className="mt-6 w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm tracking-wide text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center space-x-2 transition-all transform active:scale-[0.98]"
               >
                 {registrando ? (
@@ -685,7 +804,7 @@ export const RecepcionMuelle: React.FC = () => {
               </button>
 
               <p className="text-[10px] text-slate-400 text-center mt-2">
-                Dispara atómicamente el movimiento <code className="text-emerald-300">ENTRADA</code> en inv_mov y actualiza el estado de la OC.
+                Inventario registra primero el ingreso de las unidades aptas; si no responde, no se guarda nada y se puede reintentar.
               </p>
             </div>
           </div>
@@ -724,6 +843,7 @@ export const RecepcionMuelle: React.FC = () => {
                     <th className="py-3 px-4">Folio Acta</th>
                     <th className="py-3 px-4">Orden Compra</th>
                     <th className="py-3 px-4">Proveedor</th>
+                    <th className="py-3 px-4">Guía Proveedor</th>
                     <th className="py-3 px-4">Fecha y Hora</th>
                     <th className="py-3 px-4">Receptor</th>
                     <th className="py-3 px-4">Estado</th>
@@ -741,6 +861,9 @@ export const RecepcionMuelle: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-slate-700">
                         {rec.proveedor || 'LEGO Group Dinamarca'}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-600">
+                        {rec.nro_guia_proveedor || '—'}
                       </td>
                       <td className="py-3 px-4 text-slate-500">
                         {new Date(rec.fecha_recepcion).toLocaleString()}
