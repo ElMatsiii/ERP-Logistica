@@ -435,6 +435,23 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             </div>
           )}
 
+          {/* Empaque estimado: Inventario no entregó peso o medidas de algún producto */}
+          {otActual?.fichas_inventario && !otActual.fichas_inventario.completas && (
+            <div className="mt-5 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start space-x-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">El empaque sugerido es estimado: mida y pese la caja antes de emitir.</p>
+                <p className="mt-0.5">
+                  {otActual.fichas_inventario.error
+                    ? `Inventario no respondió (${otActual.fichas_inventario.error}).`
+                    : `Inventario no tiene peso ni medidas de: ${otActual.fichas_inventario.faltantes
+                        .map((id) => `#${id}`)
+                        .join(', ')}.`}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Lista de sets LEGO incluidos en la OT */}
           {otActual?.detalles && otActual.detalles.length > 0 && (
             <div className="mt-5 pt-4 border-t border-slate-100">

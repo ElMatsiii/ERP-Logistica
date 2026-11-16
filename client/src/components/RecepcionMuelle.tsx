@@ -521,7 +521,7 @@ export const RecepcionMuelle: React.FC = () => {
                               {det.nombre_producto || `Set LEGO #${det.id_producto}`}
                             </p>
                             <p className="text-xs text-slate-500 font-mono">
-                              SKU: {det.sku || `LEGO-${det.id_producto}`} · Peso unit: {det.peso_unitario_kg || 2.0} kg
+                              SKU: {det.sku || 'sin dato en Inventario'} · Peso unit: {det.peso_unitario_kg != null ? `${det.peso_unitario_kg} kg` : 'sin dato'}
                             </p>
                           </div>
                         </div>

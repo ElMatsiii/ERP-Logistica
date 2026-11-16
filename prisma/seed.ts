@@ -449,32 +449,32 @@ export async function main() {
   // 9. DETALLE OT PICKING (Catálogo de sets LEGO emblemáticos - 14 registros)
   console.log('[INFO] Insertando detalle de productos LEGO en órdenes de trabajo...');
   const detallesData = [
-    // OT-4091: Millennium Falcon (UCS)
-    { id: 1, ot_id: 'OT-4091', id_producto: 75192, sku: 'LEGO-SW-75192', nombre_producto: 'LEGO Star Wars Millennium Falcon UCS', cant_solicitada: 1, cant_recolectada: 1 },
-    // OT-4092: AT-AT + Batmobile Tumbler
-    { id: 2, ot_id: 'OT-4092', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1 },
-    { id: 3, ot_id: 'OT-4092', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1 },
+    // OT-4091: Death Star
+    { id: 1, ot_id: 'OT-4091', id_producto: 11, sku: '75419-1', nombre_producto: 'Death Star', cant_solicitada: 1, cant_recolectada: 1 },
+    // OT-4092: AT-AT + Hulkbuster
+    { id: 2, ot_id: 'OT-4092', id_producto: 12, sku: '75313-1', nombre_producto: 'AT-AT', cant_solicitada: 1, cant_recolectada: 1 },
+    { id: 3, ot_id: 'OT-4092', id_producto: 32, sku: '76210-1', nombre_producto: 'Hulkbuster', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4093: Ninjago City Gardens
-    { id: 4, ot_id: 'OT-4093', id_producto: 71741, sku: 'LEGO-NJ-71741', nombre_producto: 'LEGO Ninjago City Gardens', cant_solicitada: 1, cant_recolectada: 1 },
+    { id: 4, ot_id: 'OT-4093', id_producto: 42, sku: '71741-1', nombre_producto: 'NINJAGO City Gardens', cant_solicitada: 1, cant_recolectada: 1 },
     // OT-4094: Titanic
-    { id: 5, ot_id: 'OT-4094', id_producto: 10294, sku: 'LEGO-IC-10294', nombre_producto: 'LEGO Icons Titanic (9090 piezas)', cant_solicitada: 1, cant_recolectada: 1 },
-    // OT-4095: Hogwarts Castle
-    { id: 6, ot_id: 'OT-4095', id_producto: 71043, sku: 'LEGO-HP-71043', nombre_producto: 'LEGO Harry Potter Castillo de Hogwarts', cant_solicitada: 1, cant_recolectada: 1 },
-    // OT-4096: NASA Space Shuttle Discovery
-    { id: 7, ot_id: 'OT-4096', id_producto: 10283, sku: 'LEGO-IC-10283', nombre_producto: 'LEGO NASA Space Shuttle Discovery', cant_solicitada: 1, cant_recolectada: 1 },
-    // OT-4097 (Pendiente): Porsche 911
-    { id: 8, ot_id: 'OT-4097', id_producto: 10295, sku: 'LEGO-IC-10295', nombre_producto: 'LEGO Icons Porsche 911 Turbo & Targa', cant_solicitada: 2, cant_recolectada: 0 },
-    // OT-4098 (Parcial): Police Station + Camp Nou
-    { id: 9, ot_id: 'OT-4098', id_producto: 10278, sku: 'LEGO-MD-10278', nombre_producto: 'LEGO Modular Police Station', cant_solicitada: 1, cant_recolectada: 1 },
-    { id: 10, ot_id: 'OT-4098', id_producto: 10284, sku: 'LEGO-IC-10284', nombre_producto: 'LEGO Icons Camp Nou FC Barcelona', cant_solicitada: 1, cant_recolectada: 0 },
+    { id: 5, ot_id: 'OT-4094', id_producto: 112, sku: '10294-1', nombre_producto: 'Titanic', cant_solicitada: 1, cant_recolectada: 1 },
+    // OT-4095: Hogwarts Castle and Grounds
+    { id: 6, ot_id: 'OT-4095', id_producto: 88, sku: '76419-1', nombre_producto: 'Hogwarts Castle and Grounds', cant_solicitada: 1, cant_recolectada: 1 },
+    // OT-4096: Galaxy Explorer
+    { id: 7, ot_id: 'OT-4096', id_producto: 121, sku: '10497-1', nombre_producto: 'Galaxy Explorer', cant_solicitada: 1, cant_recolectada: 1 },
+    // OT-4097 (Pendiente): McLaren P1
+    { id: 8, ot_id: 'OT-4097', id_producto: 72, sku: '42172-1', nombre_producto: 'McLaren P1', cant_solicitada: 2, cant_recolectada: 0 },
+    // OT-4098 (Parcial): Downtown + Camp Nou
+    { id: 9, ot_id: 'OT-4098', id_producto: 1, sku: '60380-1', nombre_producto: 'Downtown', cant_solicitada: 1, cant_recolectada: 1 },
+    { id: 10, ot_id: 'OT-4098', id_producto: 117, sku: '10284-1', nombre_producto: 'Camp Nou - FC Barcelona', cant_solicitada: 1, cant_recolectada: 0 },
     // OT-4099 (En Proceso): Eiffel Tower
-    { id: 11, ot_id: 'OT-4099', id_producto: 10307, sku: 'LEGO-IC-10307', nombre_producto: 'LEGO Icons Torre Eiffel (149 cm)', cant_solicitada: 1, cant_recolectada: 1 },
-    // OT-4100 (Pendiente): Ideas Grand Piano
-    { id: 12, ot_id: 'OT-4100', id_producto: 21323, sku: 'LEGO-ID-21323', nombre_producto: 'LEGO Ideas Grand Piano Motorizado', cant_solicitada: 1, cant_recolectada: 0 },
-    // OT-4101: Batman Batmobile
-    { id: 13, ot_id: 'OT-4101', id_producto: 76240, sku: 'LEGO-DC-76240', nombre_producto: 'LEGO DC Batman Batmobile Tumbler', cant_solicitada: 1, cant_recolectada: 1 },
-    // OT-4102: AT-AT Walker
-    { id: 14, ot_id: 'OT-4102', id_producto: 75288, sku: 'LEGO-SW-75288', nombre_producto: 'LEGO Star Wars AT-AT Walker', cant_solicitada: 1, cant_recolectada: 1 },
+    { id: 11, ot_id: 'OT-4099', id_producto: 111, sku: '10307-1', nombre_producto: 'Eiffel Tower', cant_solicitada: 1, cant_recolectada: 1 },
+    // OT-4100 (Pendiente): Tropical Aquarium
+    { id: 12, ot_id: 'OT-4100', id_producto: 120, sku: '10366-1', nombre_producto: 'Tropical Aquarium', cant_solicitada: 1, cant_recolectada: 0 },
+    // OT-4101: Hulkbuster
+    { id: 13, ot_id: 'OT-4101', id_producto: 32, sku: '76210-1', nombre_producto: 'Hulkbuster', cant_solicitada: 1, cant_recolectada: 1 },
+    // OT-4102: AT-AT
+    { id: 14, ot_id: 'OT-4102', id_producto: 12, sku: '75313-1', nombre_producto: 'AT-AT', cant_solicitada: 1, cant_recolectada: 1 },
   ];
 
   for (const det of detallesData) {
@@ -707,18 +707,18 @@ export async function main() {
   // 13. MOVIMIENTOS DE INVENTARIO (inv_mov) (12 registros de salida por despacho)
   console.log('[INFO] Insertando movimientos de inventario...');
   const invMovsData = [
-    { id_producto: 75192, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52301 / OT-4091', fecha: new Date(Date.now() - 3600000 * 24 * 4) },
-    { id_producto: 75288, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date(Date.now() - 3600000 * 24 * 3.5) },
-    { id_producto: 76240, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date(Date.now() - 3600000 * 24 * 3.5) },
-    { id_producto: 71741, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52303 / OT-4093', fecha: new Date(Date.now() - 3600000 * 24 * 2.8) },
-    { id_producto: 10294, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52304 / OT-4094', fecha: new Date(Date.now() - 3600000 * 24 * 2) },
-    { id_producto: 71043, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52305 / OT-4095', fecha: new Date(Date.now() - 3600000 * 24 * 1.5) },
-    { id_producto: 10283, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52306 / OT-4096', fecha: new Date(Date.now() - 3600000 * 20) },
-    { id_producto: 75192, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52307 / OT-4091', fecha: new Date(Date.now() - 3600000 * 24 * 6) },
-    { id_producto: 71741, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52308 / OT-4093', fecha: new Date(Date.now() - 3600000 * 24 * 7) },
-    { id_producto: 75288, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52309 / OT-4092', fecha: new Date(Date.now() - 3600000 * 14) },
-    { id_producto: 71043, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52310 / OT-4095', fecha: new Date(Date.now() - 3600000 * 5) },
-    { id_producto: 10278, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-HIST-001', fecha: new Date(Date.now() - 3600000 * 24 * 10) },
+    { id_producto: 11, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52301 / OT-4091', fecha: new Date(Date.now() - 3600000 * 24 * 4) },
+    { id_producto: 12, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date(Date.now() - 3600000 * 24 * 3.5) },
+    { id_producto: 32, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52302 / OT-4092', fecha: new Date(Date.now() - 3600000 * 24 * 3.5) },
+    { id_producto: 42, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52303 / OT-4093', fecha: new Date(Date.now() - 3600000 * 24 * 2.8) },
+    { id_producto: 112, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52304 / OT-4094', fecha: new Date(Date.now() - 3600000 * 24 * 2) },
+    { id_producto: 88, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52305 / OT-4095', fecha: new Date(Date.now() - 3600000 * 24 * 1.5) },
+    { id_producto: 121, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52306 / OT-4096', fecha: new Date(Date.now() - 3600000 * 20) },
+    { id_producto: 11, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52307 / OT-4091', fecha: new Date(Date.now() - 3600000 * 24 * 6) },
+    { id_producto: 42, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52308 / OT-4093', fecha: new Date(Date.now() - 3600000 * 24 * 7) },
+    { id_producto: 12, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52309 / OT-4092', fecha: new Date(Date.now() - 3600000 * 14) },
+    { id_producto: 88, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-52310 / OT-4095', fecha: new Date(Date.now() - 3600000 * 5) },
+    { id_producto: 1, tipo: 'SALIDA', cantidad: 1, referencia_origen: 'GD-HIST-001', fecha: new Date(Date.now() - 3600000 * 24 * 10) },
   ];
 
   for (const m of invMovsData) {
@@ -801,16 +801,16 @@ export async function main() {
   }
 
   const recepcionesDetalleData = [
-    { id: 1, recepcion_id: 1, id_producto: 75192, id_bodega: 1, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
-    { id: 2, recepcion_id: 2, id_producto: 75288, id_bodega: 1, cantidad_esperada: 15, cantidad_recibida: 15, cantidad_danada: 1, motivo_dano: 'Caja aplastada en esquina superior' },
-    { id: 3, recepcion_id: 3, id_producto: 10294, id_bodega: 1, cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
-    { id: 4, recepcion_id: 4, id_producto: 10284, id_bodega: 1, cantidad_esperada: 12, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: 'Faltante de origen en despacho proveedor' },
-    { id: 5, recepcion_id: 5, id_producto: 76240, id_bodega: 1, cantidad_esperada: 20, cantidad_recibida: 20, cantidad_danada: 0, motivo_dano: null },
-    { id: 6, recepcion_id: 6, id_producto: 71043, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
-    { id: 7, recepcion_id: 7, id_producto: 10283, id_bodega: 2, cantidad_esperada: 14, cantidad_recibida: 14, cantidad_danada: 1, motivo_dano: 'Empaque exterior con humedad' },
-    { id: 8, recepcion_id: 8, id_producto: 71741, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
-    { id: 9, recepcion_id: 9, id_producto: 10307, id_bodega: 2, cantidad_esperada: 6, cantidad_recibida: 6, cantidad_danada: 0, motivo_dano: null },
-    { id: 10, recepcion_id: 10, id_producto: 21323, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 1, recepcion_id: 1, id_producto: 11, id_bodega: 1, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 2, recepcion_id: 2, id_producto: 12, id_bodega: 1, cantidad_esperada: 15, cantidad_recibida: 15, cantidad_danada: 1, motivo_dano: 'Caja aplastada en esquina superior' },
+    { id: 3, recepcion_id: 3, id_producto: 112, id_bodega: 1, cantidad_esperada: 8, cantidad_recibida: 8, cantidad_danada: 0, motivo_dano: null },
+    { id: 4, recepcion_id: 4, id_producto: 117, id_bodega: 1, cantidad_esperada: 12, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: 'Faltante de origen en despacho proveedor' },
+    { id: 5, recepcion_id: 5, id_producto: 32, id_bodega: 1, cantidad_esperada: 20, cantidad_recibida: 20, cantidad_danada: 0, motivo_dano: null },
+    { id: 6, recepcion_id: 6, id_producto: 88, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 7, recepcion_id: 7, id_producto: 121, id_bodega: 2, cantidad_esperada: 14, cantidad_recibida: 14, cantidad_danada: 1, motivo_dano: 'Empaque exterior con humedad' },
+    { id: 8, recepcion_id: 8, id_producto: 42, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
+    { id: 9, recepcion_id: 9, id_producto: 111, id_bodega: 2, cantidad_esperada: 6, cantidad_recibida: 6, cantidad_danada: 0, motivo_dano: null },
+    { id: 10, recepcion_id: 10, id_producto: 120, id_bodega: 2, cantidad_esperada: 10, cantidad_recibida: 10, cantidad_danada: 0, motivo_dano: null },
   ];
   for (const rdet of recepcionesDetalleData) {
     await prisma.log_recepcion_detalle.create({ data: rdet });
@@ -839,19 +839,19 @@ export async function main() {
   }
 
   const testProductos = [
-    { id_producto: 75192, sku: 'LEGO-SW-75192', nombre: 'LEGO Star Wars Millennium Falcon UCS', peso_unitario_kg: 13.2, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
-    { id_producto: 75252, sku: 'LEGO-SW-75252', nombre: 'LEGO Star Wars Imperial Star Destroyer UCS', peso_unitario_kg: 12.5, largo_cm: 53.0, alto_cm: 46.0, ancho_cm: 38.0 },
-    { id_producto: 75288, sku: 'LEGO-SW-75288', nombre: 'LEGO Star Wars AT-AT Walker', peso_unitario_kg: 2.1, largo_cm: 48.0, alto_cm: 37.8, ancho_cm: 9.4 },
-    { id_producto: 76240, sku: 'LEGO-DC-76240', nombre: 'LEGO DC Batman Batmobile Tumbler', peso_unitario_kg: 2.8, largo_cm: 45.0, alto_cm: 30.0, ancho_cm: 15.0 },
-    { id_producto: 71741, sku: 'LEGO-NJ-71741', nombre: 'LEGO Ninjago City Gardens', peso_unitario_kg: 5.6, largo_cm: 58.2, alto_cm: 48.0, ancho_cm: 17.0 },
-    { id_producto: 10294, sku: 'LEGO-IC-10294', nombre: 'LEGO Icons Titanic (9090 piezas)', peso_unitario_kg: 14.5, largo_cm: 60.0, alto_cm: 50.0, ancho_cm: 40.0 },
-    { id_producto: 71043, sku: 'LEGO-HP-71043', nombre: 'LEGO Harry Potter Castillo de Hogwarts', peso_unitario_kg: 7.5, largo_cm: 60.0, alto_cm: 51.0, ancho_cm: 20.0 },
-    { id_producto: 10283, sku: 'LEGO-IC-10283', nombre: 'LEGO NASA Space Shuttle Discovery', peso_unitario_kg: 3.2, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
-    { id_producto: 10295, sku: 'LEGO-IC-10295', nombre: 'LEGO Icons Porsche 911 Turbo & Targa', peso_unitario_kg: 1.8, largo_cm: 48.0, alto_cm: 28.2, ancho_cm: 11.8 },
-    { id_producto: 10278, sku: 'LEGO-MD-10278', nombre: 'LEGO Modular Police Station', peso_unitario_kg: 2.9, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 11.0 },
-    { id_producto: 10284, sku: 'LEGO-IC-10284', nombre: 'LEGO Icons Camp Nou FC Barcelona', peso_unitario_kg: 5.3, largo_cm: 58.0, alto_cm: 48.0, ancho_cm: 17.0 },
-    { id_producto: 10307, sku: 'LEGO-IC-10307', nombre: 'LEGO Icons Torre Eiffel (149 cm)', peso_unitario_kg: 12.0, largo_cm: 62.0, alto_cm: 52.0, ancho_cm: 39.0 },
-    { id_producto: 21323, sku: 'LEGO-ID-21323', nombre: 'LEGO Ideas Grand Piano Motorizado', peso_unitario_kg: 5.8, largo_cm: 58.0, alto_cm: 37.0, ancho_cm: 16.0 },
+    { id_producto: 11, sku: '75419-1', nombre: 'Death Star', peso_unitario_kg: 10.13, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+    { id_producto: 14, sku: '75457-1', nombre: 'Executor Super Star Destroyer', peso_unitario_kg: 6.94, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+    { id_producto: 12, sku: '75313-1', nombre: 'AT-AT', peso_unitario_kg: 7.66, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+    { id_producto: 32, sku: '76210-1', nombre: 'Hulkbuster', peso_unitario_kg: 4.65, largo_cm: 58.0, alto_cm: 12.0, ancho_cm: 48.0 },
+    { id_producto: 42, sku: '71741-1', nombre: 'NINJAGO City Gardens', peso_unitario_kg: 6.48, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+    { id_producto: 112, sku: '10294-1', nombre: 'Titanic', peso_unitario_kg: 10.2, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+    { id_producto: 88, sku: '76419-1', nombre: 'Hogwarts Castle and Grounds', peso_unitario_kg: 3.13, largo_cm: 58.0, alto_cm: 12.0, ancho_cm: 48.0 },
+    { id_producto: 121, sku: '10497-1', nombre: 'Galaxy Explorer', peso_unitario_kg: 1.58, largo_cm: 48.0, alto_cm: 9.0, ancho_cm: 38.0 },
+    { id_producto: 72, sku: '42172-1', nombre: 'McLaren P1', peso_unitario_kg: 4.48, largo_cm: 58.0, alto_cm: 12.0, ancho_cm: 48.0 },
+    { id_producto: 1, sku: '60380-1', nombre: 'Downtown', peso_unitario_kg: 2.41, largo_cm: 48.0, alto_cm: 9.0, ancho_cm: 38.0 },
+    { id_producto: 117, sku: '10284-1', nombre: 'Camp Nou - FC Barcelona', peso_unitario_kg: 6.26, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+    { id_producto: 111, sku: '10307-1', nombre: 'Eiffel Tower', peso_unitario_kg: 11.2, largo_cm: 70.0, alto_cm: 17.0, ancho_cm: 50.0 },
+    { id_producto: 120, sku: '10366-1', nombre: 'Tropical Aquarium', peso_unitario_kg: 4.77, largo_cm: 58.0, alto_cm: 12.0, ancho_cm: 48.0 },
   ];
   for (const prod of testProductos) {
     await prisma.invProducto.create({ data: prod });
@@ -876,18 +876,18 @@ export async function main() {
   }
 
   const testPedidosDetalle = [
-    { id: 1, id_pedido: 10294, id_producto: 75192, cantidad: 1 },
-    { id: 2, id_pedido: 10295, id_producto: 75288, cantidad: 1 },
-    { id: 3, id_pedido: 10295, id_producto: 76240, cantidad: 1 },
-    { id: 4, id_pedido: 10296, id_producto: 71741, cantidad: 1 },
-    { id: 5, id_pedido: 10297, id_producto: 10294, cantidad: 1 },
-    { id: 6, id_pedido: 10298, id_producto: 71043, cantidad: 1 },
-    { id: 7, id_pedido: 10299, id_producto: 10283, cantidad: 1 },
-    { id: 8, id_pedido: 10300, id_producto: 10295, cantidad: 2 },
-    { id: 9, id_pedido: 10301, id_producto: 10278, cantidad: 1 },
-    { id: 10, id_pedido: 10301, id_producto: 10284, cantidad: 1 },
-    { id: 11, id_pedido: 10304, id_producto: 76240, cantidad: 1 },
-    { id: 12, id_pedido: 10305, id_producto: 75252, cantidad: 1 },
+    { id: 1, id_pedido: 10294, id_producto: 11, cantidad: 1 },
+    { id: 2, id_pedido: 10295, id_producto: 12, cantidad: 1 },
+    { id: 3, id_pedido: 10295, id_producto: 32, cantidad: 1 },
+    { id: 4, id_pedido: 10296, id_producto: 42, cantidad: 1 },
+    { id: 5, id_pedido: 10297, id_producto: 112, cantidad: 1 },
+    { id: 6, id_pedido: 10298, id_producto: 88, cantidad: 1 },
+    { id: 7, id_pedido: 10299, id_producto: 121, cantidad: 1 },
+    { id: 8, id_pedido: 10300, id_producto: 72, cantidad: 2 },
+    { id: 9, id_pedido: 10301, id_producto: 1, cantidad: 1 },
+    { id: 10, id_pedido: 10301, id_producto: 117, cantidad: 1 },
+    { id: 11, id_pedido: 10304, id_producto: 32, cantidad: 1 },
+    { id: 12, id_pedido: 10305, id_producto: 14, cantidad: 1 },
   ];
   for (const pdet of testPedidosDetalle) {
     await prisma.ventasPedidoDetalle.create({ data: pdet });
@@ -942,16 +942,16 @@ export async function main() {
   }
 
   const testComprasOcDetalle = [
-    { id: 1, id_oc: 8001, id_producto: 75192, cantidad_esperada: 10 },
-    { id: 2, id_oc: 8002, id_producto: 75288, cantidad_esperada: 15 },
-    { id: 3, id_oc: 8003, id_producto: 10294, cantidad_esperada: 8 },
-    { id: 4, id_oc: 8004, id_producto: 10284, cantidad_esperada: 12 },
-    { id: 5, id_oc: 8005, id_producto: 76240, cantidad_esperada: 20 },
-    { id: 6, id_oc: 8006, id_producto: 71043, cantidad_esperada: 10 },
-    { id: 7, id_oc: 8007, id_producto: 10283, cantidad_esperada: 14 },
-    { id: 8, id_oc: 8008, id_producto: 71741, cantidad_esperada: 10 },
-    { id: 9, id_oc: 8009, id_producto: 10307, cantidad_esperada: 6 },
-    { id: 10, id_oc: 8010, id_producto: 21323, cantidad_esperada: 10 },
+    { id: 1, id_oc: 8001, id_producto: 11, cantidad_esperada: 10 },
+    { id: 2, id_oc: 8002, id_producto: 12, cantidad_esperada: 15 },
+    { id: 3, id_oc: 8003, id_producto: 112, cantidad_esperada: 8 },
+    { id: 4, id_oc: 8004, id_producto: 117, cantidad_esperada: 12 },
+    { id: 5, id_oc: 8005, id_producto: 32, cantidad_esperada: 20 },
+    { id: 6, id_oc: 8006, id_producto: 88, cantidad_esperada: 10 },
+    { id: 7, id_oc: 8007, id_producto: 121, cantidad_esperada: 14 },
+    { id: 8, id_oc: 8008, id_producto: 42, cantidad_esperada: 10 },
+    { id: 9, id_oc: 8009, id_producto: 111, cantidad_esperada: 6 },
+    { id: 10, id_oc: 8010, id_producto: 120, cantidad_esperada: 10 },
   ];
   for (const ocd of testComprasOcDetalle) {
     await prisma.comprasOcDetalle.create({ data: ocd });

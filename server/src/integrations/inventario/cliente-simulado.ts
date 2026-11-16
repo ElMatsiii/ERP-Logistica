@@ -19,26 +19,29 @@ import type {
  * guarda todo en memoria y se reinicia con el servidor.
  *
  * Límites conocidos:
- * - El catálogo son los productos de prueba de nuestro seed (IDs = número de set LEGO).
+ * - El catálogo son los productos que usa nuestro seed, con IDs, nombres y medidas copiados
+ *   del maestro real de Inventario (consultado el 16-11-2026).
  * - No conoce las líneas reales de los pedidos: una reserva simulada nace PENDIENTE y sin líneas.
  * - Despacho y recepción no validan que el producto exista ni descuentan stock.
  */
 
 const PRODUCTOS_SIMULADOS: Array<[number, string, string, number, number, number, number]> = [
   // id, sku, nombre, peso kg, largo, alto, ancho
-  [75192, '75192-1', 'Millennium Falcon UCS', 13.2, 53, 46, 38],
-  [75252, '75252-1', 'Imperial Star Destroyer UCS', 12.5, 53, 46, 38],
-  [75288, '75288-1', 'AT-AT Walker', 2.1, 48, 37.8, 9.4],
-  [76240, '76240-1', 'Batmobile Tumbler', 2.8, 45, 30, 15],
-  [71741, '71741-1', 'NINJAGO City Gardens', 5.6, 58.2, 48, 17],
-  [10294, '10294-1', 'Titanic', 14.5, 60, 50, 40],
-  [71043, '71043-1', 'Hogwarts Castle', 7.5, 60, 51, 20],
-  [10283, '10283-1', 'NASA Space Shuttle Discovery', 3.2, 58, 37, 11],
-  [10295, '10295-1', 'Porsche 911', 1.8, 48, 28.2, 11.8],
-  [10278, '10278-1', 'Police Station', 2.9, 58, 37, 11],
-  [10284, '10284-1', 'Camp Nou - FC Barcelona', 5.3, 58, 48, 17],
-  [10307, '10307-1', 'Eiffel Tower', 12, 62, 52, 39],
-  [21323, '21323-1', 'Grand Piano', 5.8, 58, 37, 16],
+  [1, '60380-1', 'Downtown', 2.41, 48, 9, 38],
+  [11, '75419-1', 'Death Star', 10.13, 70, 17, 50],
+  [12, '75313-1', 'AT-AT', 7.66, 70, 17, 50],
+  [14, '75457-1', 'Executor Super Star Destroyer', 6.94, 70, 17, 50],
+  [32, '76210-1', 'Hulkbuster', 4.65, 58, 12, 48],
+  [42, '71741-1', 'NINJAGO City Gardens', 6.48, 70, 17, 50],
+  [72, '42172-1', 'McLaren P1', 4.48, 58, 12, 48],
+  [74, '42143-1', 'Ferrari Daytona SP3', 4.36, 58, 12, 48],
+  [88, '76419-1', 'Hogwarts Castle and Grounds', 3.13, 58, 12, 48],
+  [111, '10307-1', 'Eiffel Tower', 11.2, 70, 17, 50],
+  [112, '10294-1', 'Titanic', 10.2, 70, 17, 50],
+  [117, '10284-1', 'Camp Nou - FC Barcelona', 6.26, 70, 17, 50],
+  [119, '10305-1', "Lion Knights' Castle", 5.17, 58, 12, 48],
+  [120, '10366-1', 'Tropical Aquarium', 4.77, 58, 12, 48],
+  [121, '10497-1', 'Galaxy Explorer', 1.58, 48, 9, 38],
 ];
 
 const BODEGAS_SIMULADAS: BodegaInventario[] = [
