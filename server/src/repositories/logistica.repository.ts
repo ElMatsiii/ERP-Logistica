@@ -11,6 +11,7 @@ import {
   mockDirecciones,
   mockComprasOc,
   mockRecepciones,
+  mockComunas,
 } from './fallbackData.js';
 
 export interface FiltrosTracking {
@@ -74,6 +75,24 @@ export class LogisticaRepository {
   private fallbackInvMov = [...mockInvMov];
   private fallbackCompras = [...mockComprasOc];
   private fallbackRecepciones = [...mockRecepciones];
+
+  getFallbackGuias() {
+    return this.fallbackGuias;
+  }
+
+  /**
+   * Obtiene la lista de comunas registradas.
+   */
+  async getComunas() {
+    try {
+      return await prisma.log_comuna.findMany({
+        include: { region: true },
+        orderBy: { nombre: 'asc' },
+      });
+    } catch (err) {
+      return mockComunas;
+    }
+  }
 
   /**
    * Obtiene la lista de órdenes de trabajo disponibles (picking) con datos de cliente y dirección.

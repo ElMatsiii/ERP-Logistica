@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { createLogisticaRouter } from './routes/logistica.routes.js';
+import { createVentasIntegrationRouter } from './routes/ventasIntegration.routes.js';
 import { checkDatabaseConnection } from './lib/prisma.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -44,6 +45,10 @@ app.get('/api/health', async (req, res) => {
 
 // Montaje de rutas de logística
 app.use('/api/logistica', createLogisticaRouter());
+
+// Rutas de integración dedicadas para el módulo de Ecommerce / Ventas
+app.use('/api/logistica/ventas', createVentasIntegrationRouter());
+app.use('/api/ventas-integration', createVentasIntegrationRouter());
 
 // Manejador 404
 app.use((req, res) => {
