@@ -7,7 +7,6 @@ import {
   mockCoberturas,
   mockTarifas,
   mockGuias,
-  mockInvMov,
   mockDirecciones,
   mockComprasOc,
   mockRecepciones,
@@ -63,6 +62,8 @@ const INCLUDE_GUIA_COMPLETA = {
 
 export interface RecepcionItemData {
   id_producto: number;
+  /** Bodega de Inventario donde entran las unidades aptas de la línea */
+  id_bodega: number | null;
   cantidad_esperada: number;
   cantidad_recibida: number;
   cantidad_danada: number;
@@ -71,21 +72,25 @@ export interface RecepcionItemData {
 
 export interface RecepcionData {
   id_oc: number;
+  id_proveedor: number;
+  nro_guia_proveedor: string;
   id_empleado_receptor: number;
   estado: string;
   observacion?: string;
   detalles: RecepcionItemData[];
-  movimientos_entrada: Array<{
-    id_producto: number;
-    tipo: 'ENTRADA';
-    cantidad: number;
-  }>;
 }
+
+/** Empleados de prueba de RRHH, para trabajar sin base de datos */
+const EMPLEADOS_FALLBACK = [
+  { id_empleado: 301, nombre: 'Carlos Gómez', cargo: 'Operador de Bodega Central' },
+  { id_empleado: 302, nombre: 'Juan Tapia', cargo: 'Operador de Picking Zona Norte' },
+  { id_empleado: 303, nombre: 'Loreto Silva', cargo: 'Operadora de Bodega Packing' },
+  { id_empleado: 304, nombre: 'Esteban Paredes', cargo: 'Operador de Recepción y Despacho' },
+];
 
 export class LogisticaRepository {
   private fallbackOts = [...mockOts];
   private fallbackGuias = [...mockGuias];
-  private fallbackInvMov = [...mockInvMov];
   private fallbackCompras = [...mockComprasOc];
   private fallbackRecepciones = [...mockRecepciones];
 
@@ -679,11 +684,48 @@ export class LogisticaRepository {
   }
 
   /**
-   * Registra una recepción en muelle en una transacción atómica:
-   * 1. Inserta `log_recepcion`
-   * 2. Inserta `log_recepcion_detalle` con conteo de unidades recibidas vs dañadas
-   * 3. Inserta movimientos de tipo 'ENTRADA' en `inv_mov` solo por las unidades aptas
-   * 4. Actualiza el estado de la Orden de Compra
+   * Empleados (por ahora la tabla de prueba de RRHH) para elegir al receptor en muelle.
+   */
+  async getEmpleados() {
+    try {
+      return await prisma.rrhhEmpleado.findMany({ orderBy: { id_empleado: 'asc' } });
+    } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
+      return EMPLEADOS_FALLBACK;
+    }
+  }
+
+  async existeEmpleado(idEmpleado: number): Promise<boolean> {
+    try {
+      return (await prisma.rrhhEmpleado.count({ where: { id_empleado: idEmpleado } })) > 0;
+    } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
+      return EMPLEADOS_FALLBACK.some((e) => e.id_empleado === idEmpleado);
+    }
+  }
+
+  /** true si la guía del proveedor ya se registró para esa OC */
+  async existeRecepcion(idOc: number, nroGuiaProveedor: string): Promise<boolean> {
+    try {
+      const previa = await prisma.log_recepcion.findFirst({
+        where: { id_oc: idOc, nro_guia_proveedor: nroGuiaProveedor },
+        select: { id: true },
+      });
+      return previa !== null;
+    } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
+      return this.fallbackRecepciones.some(
+        (r: any) => r.id_oc === idOc && r.nro_guia_proveedor === nroGuiaProveedor
+      );
+    }
+  }
+
+  /**
+   * Registra el acta de recepción en muelle en una transacción atómica:
+   * 1. Inserta `log_recepcion` (con proveedor y guía del proveedor)
+   * 2. Inserta `log_recepcion_detalle` con conteo de unidades recibidas vs dañadas y bodega
+   * 3. Actualiza el estado de la Orden de Compra
+   * El ingreso de stock lo registra Inventario por API antes de esta transacción.
    */
   async registrarRecepcionTransaccional(data: RecepcionData) {
     try {
@@ -692,6 +734,8 @@ export class LogisticaRepository {
         const recepcionCreada = await tx.log_recepcion.create({
           data: {
             id_oc: data.id_oc,
+            id_proveedor: data.id_proveedor,
+            nro_guia_proveedor: data.nro_guia_proveedor,
             id_empleado_receptor: data.id_empleado_receptor,
             estado: data.estado,
             observacion: data.observacion || 'Recepción en muelle conforme',
@@ -704,6 +748,7 @@ export class LogisticaRepository {
             data: {
               recepcion_id: recepcionCreada.id,
               id_producto: det.id_producto,
+              id_bodega: det.id_bodega,
               cantidad_esperada: det.cantidad_esperada,
               cantidad_recibida: det.cantidad_recibida,
               cantidad_danada: det.cantidad_danada,
@@ -712,20 +757,7 @@ export class LogisticaRepository {
           });
         }
 
-        // 3. Registrar movimientos de entrada en inventario por las unidades aptas
-        for (const mov of data.movimientos_entrada) {
-          await tx.inv_mov.create({
-            data: {
-              id_producto: mov.id_producto,
-              tipo: 'ENTRADA',
-              cantidad: mov.cantidad,
-              referencia_origen: `RECEPCION #${recepcionCreada.id} / OC #${data.id_oc}`,
-              id_usuario: data.id_empleado_receptor,
-            },
-          });
-        }
-
-        // 4. Actualizar estado de la Orden de Compra
+        // 3. Actualizar estado de la Orden de Compra
         await tx.comprasOc.update({
           where: { id_oc: data.id_oc },
           data: {
@@ -740,10 +772,15 @@ export class LogisticaRepository {
         });
       });
     } catch (err) {
+      // Solo sin base de datos se trabaja en memoria; un error de datos (FK, UNIQUE) se propaga.
+      if (!esErrorDeConexion(err)) throw err;
+
       // Fallback en memoria si la BD no está disponible
       const nuevaRecepcion = {
         id: this.fallbackRecepciones.length + 1,
         id_oc: data.id_oc,
+        id_proveedor: data.id_proveedor,
+        nro_guia_proveedor: data.nro_guia_proveedor,
         id_empleado_receptor: data.id_empleado_receptor,
         nombre_empleado: 'P. Pérez (Operador Bodega)',
         fecha_recepcion: new Date().toISOString(),
@@ -762,18 +799,6 @@ export class LogisticaRepository {
       const oc = this.fallbackCompras.find((c) => c.id_oc === data.id_oc);
       if (oc) {
         oc.estado = data.estado === 'CONFORME' ? 'RECIBIDA' : 'PARCIAL';
-      }
-
-      // Registrar entradas en fallback inventario
-      for (const mov of data.movimientos_entrada) {
-        this.fallbackInvMov.push({
-          id: Date.now(),
-          id_producto: mov.id_producto,
-          tipo: 'ENTRADA',
-          cantidad: mov.cantidad,
-          referencia_origen: `RECEPCION #${nuevaRecepcion.id} / OC #${data.id_oc}`,
-          fecha: new Date().toISOString(),
-        });
       }
 
       return nuevaRecepcion;

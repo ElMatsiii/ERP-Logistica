@@ -59,6 +59,13 @@ function errorDeInventario(err: unknown, accion: string): Error {
   if (err.tipo === 'NO_AUTORIZADO') {
     return new ValidationError(`Inventario rechazó la API key de Logística al ${accion}. Revise INVENTARIO_API_KEY.`, 502);
   }
+  // Datos que Inventario no reconoce (producto o bodega) o en conflicto con lo ya registrado
+  if (err.tipo === 'NO_ENCONTRADO') {
+    return new ValidationError(`Inventario no reconoce los datos al ${accion}: ${err.message}`, 422);
+  }
+  if (err.tipo === 'CONFLICTO') {
+    return new ValidationError(`Inventario rechazó la operación al ${accion}: ${err.message}`, 409);
+  }
   return new ValidationError(`Inventario respondió un error al ${accion}: ${err.message}`, 502);
 }
 
@@ -77,11 +84,27 @@ export interface CotizarRequest {
   bultos: BultoInput[];
 }
 
+export interface LineaRecepcionRequest extends LineaRecepcionInput {
+  /** Bodega de Inventario donde entran las unidades aptas (obligatoria si hay aptas) */
+  id_bodega?: number | null;
+}
+
 export interface RegistrarRecepcionRequest {
   id_oc: number;
+  /** Receptor en muelle (rrhh.empleado). Obligatorio. */
   id_empleado_receptor?: number;
+  /** N° de la guía de despacho del proveedor. Obligatorio; una vez por OC. */
+  nro_guia_proveedor?: string;
   observacion?: string;
-  lineas: LineaRecepcionInput[];
+  lineas: LineaRecepcionRequest[];
+}
+
+/** Resultado del ingreso de stock en Inventario para una recepción */
+export interface IngresoInventario {
+  registrado: boolean;
+  id_movimiento_ingreso?: number;
+  /** Por qué no se envió a Inventario (p. ej. todas las unidades llegaron dañadas) */
+  motivo?: string;
 }
 
 export class LogisticaService {
@@ -584,7 +607,9 @@ export class LogisticaService {
    * Registra la recepción física en muelle de una Orden de Compra (HU-06).
    * Aplica la 6ta validación de negocio:
    * cantidad_danada <= cantidad_recibida <= cantidad_esperada.
-   * Dispara el ingreso automático como ENTRADA en inventario por las unidades aptas.
+   * Exige receptor real, guía del proveedor y bodega por línea con unidades aptas.
+   * Inventario registra primero el ingreso (POST /movimientos/recepcion); si falla no se guarda
+   * nada. Luego se guarda el acta en Logística.
    */
   async registrarRecepcion(input: RegistrarRecepcionRequest) {
     if (!input.id_oc) {
@@ -594,10 +619,33 @@ export class LogisticaService {
       throw new ValidationError('Debe ingresar al menos una línea de producto para la recepción.', 400);
     }
 
-    // Verificar que la OC exista
+    // El receptor debe ser un empleado real (#17): ya no hay receptor por defecto
+    const idReceptor = Number(input.id_empleado_receptor);
+    if (!Number.isInteger(idReceptor) || idReceptor <= 0) {
+      throw new ValidationError('Debe indicar el empleado receptor en muelle.', 400);
+    }
+
+    // Guía de despacho del proveedor: Inventario la exige y no acepta la misma dos veces por OC
+    const nroGuia = (input.nro_guia_proveedor ?? '').trim().toUpperCase();
+    if (!nroGuia) {
+      throw new ValidationError('Debe indicar el N° de guía de despacho del proveedor.', 400);
+    }
+    if (nroGuia.length > 50) {
+      throw new ValidationError('El N° de guía del proveedor no puede superar 50 caracteres.', 400);
+    }
+
+    // Verificar que la OC exista; el proveedor se toma de la OC
     const oc = await this.repository.getCompraById(input.id_oc);
     if (!oc) {
       throw new ValidationError(`La orden de compra #${input.id_oc} no existe.`, 404);
+    }
+    const idProveedor = Number((oc as { id_proveedor?: number }).id_proveedor);
+    if (!Number.isInteger(idProveedor) || idProveedor <= 0) {
+      throw new ValidationError(`La orden de compra #${input.id_oc} no tiene un proveedor asociado.`, 422);
+    }
+
+    if (!(await this.repository.existeEmpleado(idReceptor))) {
+      throw new ValidationError(`El empleado receptor ${idReceptor} no existe en RRHH.`, 422);
     }
 
     // Validación 6: Evaluar cantidades con la lógica pura de dominio
@@ -608,27 +656,71 @@ export class LogisticaService {
       throw new ValidationError(err.message || 'Error en las cantidades de recepción.', 422);
     }
 
+    // Cada línea con unidades aptas necesita la bodega de Inventario donde entra
+    for (const l of input.lineas) {
+      const aptas = l.cantidad_recibida - l.cantidad_danada;
+      const bodega = Number(l.id_bodega);
+      if (aptas > 0 && (!Number.isInteger(bodega) || bodega <= 0)) {
+        throw new ValidationError(`Indique la bodega de ingreso para el producto ${l.id_producto}.`, 400);
+      }
+    }
+
+    if (await this.repository.existeRecepcion(input.id_oc, nroGuia)) {
+      throw new ValidationError(
+        `La guía ${nroGuia} del proveedor ya se registró para la OC #${input.id_oc}.`,
+        409
+      );
+    }
+
+    // 1. Inventario registra el ingreso de las unidades aptas. Si falla, no se guarda nada
+    //    y la misma recepción se puede volver a confirmar (Inventario es idempotente por OC + guía).
+    const ingreso = await this.registrarIngresoInventario(input, idProveedor, nroGuia, idReceptor);
+
+    const observacionBase = input.observacion?.trim() || `Recepción en muelle ${resultadoDominio.estado_recepcion}`;
     const recepcionData: RecepcionData = {
       id_oc: input.id_oc,
-      // 304 existe en test_log_rrhh_empleado (FK). Se elimina en el punto 17 (empleado obligatorio).
-      id_empleado_receptor: input.id_empleado_receptor || 304,
+      id_proveedor: idProveedor,
+      nro_guia_proveedor: nroGuia,
+      id_empleado_receptor: idReceptor,
       estado: resultadoDominio.estado_recepcion,
-      observacion: input.observacion || `Recepción en muelle ${resultadoDominio.estado_recepcion}`,
+      observacion: ingreso.registrado
+        ? `${observacionBase} (ingreso en Inventario: movimiento #${ingreso.id_movimiento_ingreso})`
+        : observacionBase,
       detalles: input.lineas.map((l) => ({
         id_producto: l.id_producto,
+        id_bodega: Number(l.id_bodega) > 0 ? Number(l.id_bodega) : null,
         cantidad_esperada: l.cantidad_esperada,
         cantidad_recibida: l.cantidad_recibida,
         cantidad_danada: l.cantidad_danada,
         motivo_dano: l.motivo_dano || null,
       })),
-      movimientos_entrada: resultadoDominio.movimientos_entrada,
     };
 
-    const recepcionRegistrada = await this.repository.registrarRecepcionTransaccional(recepcionData);
+    // 2. Guardar el acta en Logística
+    let recepcionRegistrada;
+    try {
+      recepcionRegistrada = await this.repository.registrarRecepcionTransaccional(recepcionData);
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        throw new ValidationError(
+          `La guía ${nroGuia} del proveedor ya se registró para la OC #${input.id_oc}.`,
+          409
+        );
+      }
+      if (!ingreso.registrado) throw err;
+      throw new ValidationError(
+        `Inventario registró el ingreso (movimiento #${ingreso.id_movimiento_ingreso}), pero no se pudo guardar el acta: ${err?.message || err}. ` +
+          'Vuelva a confirmar la misma recepción: Inventario no duplica el ingreso.',
+        500
+      );
+    }
 
     return {
-      mensaje: 'Recepción en muelle confirmada e ingreso de existencias a inventario registrado.',
+      mensaje: ingreso.registrado
+        ? 'Recepción en muelle confirmada. Inventario registró el ingreso de las unidades aptas.'
+        : `Recepción en muelle registrada. ${ingreso.motivo}`,
       recepcion: recepcionRegistrada,
+      inventario: ingreso,
       resumen: {
         total_esperado: resultadoDominio.total_esperado,
         total_recibido: resultadoDominio.total_recibido,
@@ -640,9 +732,62 @@ export class LogisticaService {
   }
 
   /**
+   * Pide a Inventario el ingreso de las unidades aptas (recibida - dañada) por producto y bodega.
+   * Las líneas sin aptas no se envían; si ninguna tiene aptas, no se llama a Inventario.
+   */
+  private async registrarIngresoInventario(
+    input: RegistrarRecepcionRequest,
+    idProveedor: number,
+    nroGuia: string,
+    idReceptor: number
+  ): Promise<IngresoInventario> {
+    const porProductoYBodega = new Map<string, { id_producto: number; id_bodega: number; cantidad: number }>();
+    for (const l of input.lineas) {
+      const aptas = l.cantidad_recibida - l.cantidad_danada;
+      if (aptas <= 0) continue;
+      const clave = `${l.id_producto}-${l.id_bodega}`;
+      const linea = porProductoYBodega.get(clave) ?? { id_producto: l.id_producto, id_bodega: Number(l.id_bodega), cantidad: 0 };
+      linea.cantidad += aptas;
+      porProductoYBodega.set(clave, linea);
+    }
+
+    if (porProductoYBodega.size === 0) {
+      return { registrado: false, motivo: 'No hay unidades aptas: no se registró ingreso en Inventario.' };
+    }
+
+    try {
+      const resultado = await this.inventario.registrarRecepcion({
+        id_oc: input.id_oc,
+        id_proveedor: idProveedor,
+        nro_guia_proveedor: nroGuia,
+        id_empleado: idReceptor,
+        fecha_recepcion: new Date().toISOString(),
+        lineas: [...porProductoYBodega.values()],
+      });
+      return { registrado: true, id_movimiento_ingreso: resultado.ingreso.id_movimiento };
+    } catch (err) {
+      throw errorDeInventario(err, 'registrar el ingreso de la recepción');
+    }
+  }
+
+  /**
    * Consulta el historial de recepciones en muelle.
    */
   async getHistorialRecepciones() {
     return this.repository.getHistorialRecepciones();
+  }
+
+  /** Empleados para elegir al receptor en muelle */
+  async getEmpleados() {
+    return this.repository.getEmpleados();
+  }
+
+  /** Bodegas de Inventario donde puede ingresar la mercadería recibida */
+  async getBodegas() {
+    try {
+      return await this.inventario.obtenerBodegas();
+    } catch (err) {
+      throw errorDeInventario(err, 'consultar las bodegas');
+    }
   }
 }

@@ -194,11 +194,37 @@ export interface LineaRecepcionInput {
   motivo_dano?: string | null;
 }
 
+export interface LineaRecepcionPayload extends LineaRecepcionInput {
+  /** Bodega de Inventario donde entran las unidades aptas */
+  id_bodega: number | null;
+}
+
 export interface RegistrarRecepcionPayload {
   id_oc: number;
-  id_empleado_receptor?: number;
+  id_empleado_receptor: number;
+  nro_guia_proveedor: string;
   observacion?: string;
-  lineas: LineaRecepcionInput[];
+  lineas: LineaRecepcionPayload[];
+}
+
+/** Resultado del ingreso de stock en Inventario para una recepción */
+export interface IngresoInventario {
+  registrado: boolean;
+  id_movimiento_ingreso?: number;
+  motivo?: string;
+}
+
+export interface Empleado {
+  id_empleado: number;
+  nombre: string;
+  cargo: string;
+}
+
+/** Bodega de Inventario */
+export interface Bodega {
+  id_bodega: number;
+  nombre_bodega: string;
+  ubicacion_fisica: string;
 }
 
 export interface DetalleRecepcion {
