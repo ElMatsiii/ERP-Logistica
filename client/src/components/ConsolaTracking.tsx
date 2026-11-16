@@ -148,6 +148,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
     'Entrega Fallida',
   ];
 
+  // Para filtrar se suman los estados que asigna el sistema mientras Inventario confirma el egreso.
+  // No van en estadosOpciones porque no se registran a mano en la bitácora.
+  const estadosFiltro = ['Pendiente de stock', 'Error de stock', ...estadosOpciones];
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 animate-in fade-in duration-300">
       
@@ -228,7 +232,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-[#e52521] focus:outline-none transition-all"
             >
               <option value="">Todos los estados</option>
-              {estadosOpciones.map((st) => (
+              {estadosFiltro.map((st) => (
                 <option key={st} value={st}>
                   {st}
                 </option>
@@ -326,7 +330,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="font-semibold text-slate-800 block">
-                            {g.ot?.id_pedido || 'Pedido'}
+                            {g.ot?.id_pedido ? `Pedido ${g.ot.id_pedido}` : 'Pedido'}
                           </span>
                           <span className="text-[10px] text-slate-400 font-mono">{g.ot_id}</span>
                         </td>

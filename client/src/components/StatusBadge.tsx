@@ -67,6 +67,20 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'ot' })
           <span>{status}</span>
         </span>
       );
+    case 'Pendiente de stock':
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+          <Package className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+          <span>{status}</span>
+        </span>
+      );
+    case 'Error de stock':
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-800 border border-red-300">
+          <AlertTriangle className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+          <span>{status}</span>
+        </span>
+      );
     case 'Despachado':
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-300">

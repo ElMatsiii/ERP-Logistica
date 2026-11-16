@@ -75,10 +75,19 @@ DATABASE_URL="postgresql://<USUARIO>:<PASSWORD_URL_ENCODED>@<HOST_NEON>:5432/si2
 ```
 
 ### 2. Migrar y Poblar la Base de Datos
+**Base nueva o local** (crea las tablas y carga datos de prueba):
 ```bash
 # Ejecutar DDL, generar cliente Prisma y poblar datos iniciales
 npm run db:setup
 ```
+
+**Base que ya tiene datos** (por ejemplo, la compartida en Neon), solo aplicar los cambios de esquema:
+```bash
+npm run db:ddl        # ejecuta en orden db/ddl/001, 002, ... (idempotentes)
+npm run db:generate
+```
+
+> ⚠️ `db:setup` y `db:seed` **borran** los datos de las tablas de logística antes de cargar los de prueba. No usarlos contra la base compartida. Antes de migrar Neon, respaldar el esquema: `pg_dump -n logistica`.
 
 ### 3. Ejecutar la Aplicación en Modo Desarrollo
 Ejecuta simultáneamente el Backend (Express en `:3001`) y el Frontend (Vite en `:5173`):

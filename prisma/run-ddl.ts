@@ -7,8 +7,20 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
+// Ejecuta en orden todos los scripts de db/ddl (001, 002, ...).
 async function main() {
-  const ddlPath = path.resolve(process.cwd(), 'db/ddl/001_log_tablas.sql');
+  const ddlDir = path.resolve(process.cwd(), 'db/ddl');
+  const archivos = fs
+    .readdirSync(ddlDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+
+  for (const archivo of archivos) {
+    await ejecutarArchivo(path.join(ddlDir, archivo));
+  }
+}
+
+async function ejecutarArchivo(ddlPath: string) {
   console.log(`[INFO] Ejecutando DDL seguro e idempotente desde: ${ddlPath}`);
 
   const rawSql = fs.readFileSync(ddlPath, 'utf-8');

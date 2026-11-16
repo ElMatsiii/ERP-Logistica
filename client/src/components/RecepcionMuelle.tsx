@@ -191,7 +191,7 @@ export const RecepcionMuelle: React.FC = () => {
 
       const respuesta = await registrarRecepcionMuelle({
         id_oc: ocActual.id_oc,
-        id_empleado_receptor: 12,
+        id_empleado_receptor: 304,
         observacion: observacionGeneral.trim() || `Recepción en ${muelleAsignado} con guía ${guiaProveedor}`,
         lineas: lineasPayload,
       });

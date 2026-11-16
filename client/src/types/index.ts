@@ -1,6 +1,8 @@
 export type EstadoOT = 'PENDIENTE' | 'EN_PROCESO' | 'PARCIAL' | 'CERRADO';
 
 export type EstadoGuia =
+  | 'Pendiente de stock'
+  | 'Error de stock'
   | 'Preparado'
   | 'Despachado'
   | 'En tránsito'
@@ -50,7 +52,7 @@ export interface DetalleOT {
 
 export interface OTPicking {
   id: string;
-  id_pedido: string;
+  id_pedido: number;
   id_operador: number;
   nombre_operador: string;
   estado: EstadoOT;
@@ -163,6 +165,7 @@ export interface DetalleOrdenCompra {
 
 export interface OrdenCompra {
   id_oc: number;
+  id_proveedor?: number;
   proveedor: string;
   estado: string;
   fecha_emision?: string;
@@ -189,6 +192,7 @@ export interface DetalleRecepcion {
   id: number;
   recepcion_id: number;
   id_producto: number;
+  id_bodega?: number | null;
   cantidad_esperada: number;
   cantidad_recibida: number;
   cantidad_danada: number;
@@ -200,6 +204,8 @@ export interface DetalleRecepcion {
 export interface RecepcionRegistro {
   id: number;
   id_oc: number;
+  id_proveedor?: number | null;
+  nro_guia_proveedor?: string | null;
   id_empleado_receptor: number;
   nombre_empleado?: string;
   fecha_recepcion: string;
