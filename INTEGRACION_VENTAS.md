@@ -204,3 +204,33 @@ LOGISTICA_API_URL=http://localhost:3001
   ]
 }
 ```
+
+---
+
+## 4. Guía de Conexión Rápida para el Backend de Ventas
+
+En el repositorio de Ventas (`backend/controllers/pedidosController.js`), actualmente el tracking se obtiene de un mock en memoria (`getEnvioPorPedido`). 
+
+Para conectar con la API real de Logística manteniendo compatibilidad total con su componente `OrderDetailModal.tsx`, solo deben reemplazar la llamada por una función asíncrona:
+
+```javascript
+// En Ventas: backend/controllers/pedidosController.js
+// Reemplazar: const envio = getEnvioPorPedido(pedido.id_pedido);
+// Por:
+let envio = null;
+try {
+  const resp = await fetch(`http://localhost:3001/api/logistica/ventas/tracking/${pedido.id_pedido}`, {
+    signal: AbortSignal.timeout(2000)
+  });
+  if (resp.ok) {
+    const data = await resp.json();
+    if (data.encontrado) {
+      envio = data; // Contiene exactamente courier, numero_seguimiento, estado_envio, fecha_entrega_estimada, eventos
+    }
+  }
+} catch (e) {
+  // Fallback al mock si Logística está desconectado
+  envio = getEnvioPorPedido(pedido.id_pedido);
+}
+```
+*La respuesta de Logística respeta 100% los nombres de campos que su modal `OrderDetailModal.tsx` ya consume.*

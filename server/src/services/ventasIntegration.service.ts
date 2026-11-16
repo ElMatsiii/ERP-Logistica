@@ -453,16 +453,43 @@ export class VentasIntegrationService {
       };
     }
 
+    // Mapeo a los estados esperados por el frontend de Ventas ('en_transito' | 'en_reparto' | 'entregado')
+    const estadoEnvioMap: Record<string, string> = {
+      ENTREGADO_CONFORME: 'entregado',
+      EN_REPARTO: 'en_reparto',
+      EN_TRANSITO: 'en_transito',
+      PREPARADO: 'en_transito',
+      RETIRADO: 'en_transito',
+    };
+    const estadoEnvioVentas = estadoEnvioMap[guia.estado_actual] || 'en_transito';
+
+    const fechaEstimada = new Date(guia.fecha_emision);
+    fechaEstimada.setDate(fechaEstimada.getDate() + (guia.servicio?.dias_transito_comprometidos || 2));
+    const fechaEstimadaStr = fechaEstimada.toISOString().split('T')[0];
+
     return {
       encontrado: true,
       id_pedido: guia.ot?.id_pedido || q,
+      // 1. Estructura 100% idéntica a lo que espera Ventas (OrderDetailModal.tsx / pedidosApi.ts):
+      courier: guia.transportista?.nombre || 'Chilexpress',
+      numero_seguimiento: guia.num_seguimiento,
+      estado_envio: estadoEnvioVentas,
+      fecha_despacho: guia.fecha_emision,
+      fecha_entrega_estimada: fechaEstimadaStr,
+      fecha_entrega: guia.estado_actual === 'ENTREGADO_CONFORME' ? new Date().toISOString() : null,
+      eventos: (guia.eventos || []).map((e: any) => ({
+        fecha: e.fecha_hora,
+        descripcion: e.observacion || `Estado: ${e.estado}`,
+        ubicacion: 'La Serena',
+      })),
+      // 2. Propiedades de control para Logística:
       codigo_seguimiento: guia.num_seguimiento,
+      num_seguimiento: guia.num_seguimiento,
       guia_despacho_id: guia.id,
       transportista: guia.transportista?.nombre || 'Chilexpress',
       tipo_envio: guia.servicio?.nombre || 'Estándar',
       precio_envio: Number(guia.costo_envio),
       estado_actual: guia.estado_actual,
-      fecha_emision: guia.fecha_emision,
       direccion_destino: guia.direccion
         ? `${guia.direccion.calle} ${guia.direccion.numero}, ${guia.direccion.comuna?.nombre}`
         : 'La Serena, IV Región',
