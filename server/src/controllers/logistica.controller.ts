@@ -69,6 +69,23 @@ export class LogisticaController {
     }
   };
 
+  /** Reintenta que Inventario confirme el egreso de una guía en 'Pendiente de stock' o 'Error de stock' */
+  reintentarStockGuia = async (req: Request, res: Response) => {
+    try {
+      const resultado = await this.service.reintentarConfirmacionStock(
+        String(req.params.id),
+        req.body?.usuario_responsable
+      );
+      res.json(resultado);
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+      console.error(`Error al reintentar stock de la guía ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Error al reintentar la confirmación de stock', detalle: error.message });
+    }
+  };
+
   getTracking = async (req: Request, res: Response) => {
     try {
       const { estado, transportista, fecha, busqueda } = req.query;

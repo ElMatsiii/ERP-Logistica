@@ -1,9 +1,11 @@
 import React from 'react';
-import { CheckCircle2, Copy, ExternalLink, X, PackageCheck } from 'lucide-react';
-import { GuiaDespacho } from '../types';
+import { AlertTriangle, CheckCircle2, Copy, ExternalLink, X, PackageCheck } from 'lucide-react';
+import { ConfirmacionStock, GuiaDespacho } from '../types';
 
 interface ModalConfirmacionProps {
   guia: GuiaDespacho | null;
+  /** Respuesta de Inventario al egreso; si no confirmó, la guía quedó en 'Error de stock' */
+  inventario?: ConfirmacionStock | null;
   isOpen: boolean;
   onClose: () => void;
   onGoToTracking: (numSeguimiento?: string) => void;
@@ -11,13 +13,16 @@ interface ModalConfirmacionProps {
 
 export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
   guia,
+  inventario,
   isOpen,
   onClose,
   onGoToTracking,
 }) => {
+  const [copiado, setCopiado] = React.useState(false);
+
   if (!isOpen || !guia) return null;
 
-  const [copiado, setCopiado] = React.useState(false);
+  const stockConfirmado = inventario ? inventario.ok : guia.estado_actual !== 'Error de stock';
 
   const copiarAlPortapapeles = () => {
     navigator.clipboard.writeText(guia.num_seguimiento);
@@ -30,15 +35,27 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
       <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95">
         
         {/* Header con gradiente LEGO */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 text-white flex items-center justify-between">
+        <div
+          className={`bg-gradient-to-r ${
+            stockConfirmado ? 'from-emerald-600 to-teal-600' : 'from-amber-500 to-orange-600'
+          } px-6 py-5 text-white flex items-center justify-between`}
+        >
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
-              <PackageCheck className="w-6 h-6 text-white" />
+              {stockConfirmado ? (
+                <PackageCheck className="w-6 h-6 text-white" />
+              ) : (
+                <AlertTriangle className="w-6 h-6 text-white" />
+              )}
             </div>
             <div>
-              <h3 className="font-bold text-lg">¡Guía de Despacho Emitida!</h3>
-              <p className="text-xs text-emerald-100">
-                Inventario rebajado automáticamente (inv_mov)
+              <h3 className="font-bold text-lg">
+                {stockConfirmado ? '¡Guía de Despacho Emitida!' : 'Guía creada, falta confirmar stock'}
+              </h3>
+              <p className="text-xs text-white/80">
+                {stockConfirmado
+                  ? 'Inventario confirmó el egreso de stock'
+                  : 'Inventario no confirmó el egreso de stock'}
               </p>
             </div>
           </div>
@@ -100,15 +117,30 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
             </div>
           </div>
 
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 flex items-start space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-semibold">Bitácora inicial registrada</p>
-              <p className="text-emerald-700">
-                El evento de despacho ha sido insertado en <code className="font-mono bg-emerald-100 px-1 rounded">log_evento_tracking</code> con estado <span className="font-bold">"Preparado"</span>.
-              </p>
+          {stockConfirmado ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 flex items-start space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold">Egreso confirmado por Inventario</p>
+                <p className="text-emerald-700">
+                  La guía quedó en estado <span className="font-bold">"Preparado"</span>
+                  {inventario?.id_movimiento_egreso && <> (movimiento de Inventario #{inventario.id_movimiento_egreso})</>}.
+                  {inventario?.id_movimiento_liberacion && <> Lo no recolectado volvió a stock disponible.</>}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex items-start space-x-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold">La guía quedó en "Error de stock"</p>
+                {inventario?.error && <p className="text-amber-800 mt-0.5">{inventario.error}</p>}
+                <p className="text-amber-800 mt-1">
+                  Reintente la confirmación desde la Consola de Tracking. Mientras tanto no se pueden registrar eventos de transporte.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer con acciones */}

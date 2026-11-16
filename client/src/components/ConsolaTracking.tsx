@@ -19,11 +19,12 @@ import {
   ShieldCheck,
   Send,
 } from 'lucide-react';
-import { GuiaDespacho, Transportista } from '../types';
+import { GuiaDespacho, Transportista, ESTADOS_STOCK } from '../types';
 import {
   fetchTracking,
   fetchTransportistas,
   registrarEventoTracking,
+  reintentarStockGuia,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 
@@ -53,6 +54,16 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   const [usuarioResponsable, setUsuarioResponsable] = useState<string>('M. Pizarro');
   const [guardandoEvento, setGuardandoEvento] = useState<boolean>(false);
   const [mensajeExitoEvento, setMensajeExitoEvento] = useState<string | null>(null);
+
+  // Reintento de la confirmación de stock con Inventario
+  const [reintentandoStock, setReintentandoStock] = useState<boolean>(false);
+  const [mensajeStock, setMensajeStock] = useState<{ ok: boolean; texto: string } | null>(null);
+  const enEsperaStock = !!guiaSeleccionada && ESTADOS_STOCK.includes(guiaSeleccionada.estado_actual);
+  const ultimoEvento = guiaSeleccionada?.eventos?.[guiaSeleccionada.eventos.length - 1];
+
+  useEffect(() => {
+    setMensajeStock(null);
+  }, [guiaSeleccionada?.id]);
 
   // Cargar datos de tracking
   const cargarTracking = async () => {
@@ -106,6 +117,23 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
       setBusqueda(initialSearch);
     }
   }, [initialSearch]);
+
+  // Vuelve a pedir a Inventario que confirme el egreso de la guía seleccionada
+  const handleReintentarStock = async () => {
+    if (!guiaSeleccionada) return;
+    try {
+      setReintentandoStock(true);
+      setMensajeStock(null);
+      const res = await reintentarStockGuia(guiaSeleccionada.id, usuarioResponsable);
+      setMensajeStock({ ok: res.inventario.ok, texto: res.mensaje });
+      setGuiaSeleccionada(res.guia);
+      setGuias((prev) => prev.map((item) => (item.id === res.guia.id ? res.guia : item)));
+    } catch (err: any) {
+      setMensajeStock({ ok: false, texto: err.message || 'Error al reintentar la confirmación de stock.' });
+    } finally {
+      setReintentandoStock(false);
+    }
+  };
 
   // Manejador para registrar nuevo evento append-only
   const handleRegistrarEvento = async (e: React.FormEvent) => {
@@ -501,8 +529,48 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
               </div>
 
               {/* ========================================================
+                  CONFIRMACIÓN DE STOCK PENDIENTE CON INVENTARIO
+                 ======================================================== */}
+              {enEsperaStock && (
+                <div className="pt-4 border-t border-slate-200">
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-2">
+                    <div className="flex items-start space-x-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Inventario aún no confirma el egreso de stock</p>
+                        <p className="text-amber-800 mt-0.5">
+                          {ultimoEvento?.observacion ||
+                            'La guía espera la confirmación de Inventario.'}
+                        </p>
+                        <p className="text-amber-800 mt-1">
+                          Hasta que Inventario confirme no se registran eventos de transporte. Reintentar es seguro: Inventario no descuenta dos veces la misma guía.
+                        </p>
+                      </div>
+                    </div>
+
+                    {mensajeStock && (
+                      <p className={`font-semibold ${mensajeStock.ok ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {mensajeStock.texto}
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleReintentarStock}
+                      disabled={reintentandoStock}
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-xs font-bold transition-all"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${reintentandoStock ? 'animate-spin' : ''}`} />
+                      <span>{reintentandoStock ? 'Consultando a Inventario...' : 'Reintentar confirmación de stock'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================
                   FORMULARIO DE ACTUALIZACIÓN DE EVENTOS (APPEND-ONLY)
                  ======================================================== */}
+              {!enEsperaStock && (
               <div className="pt-4 border-t border-slate-200">
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center space-x-1.5">
                   <PlusCircle className="w-3.5 h-3.5 text-blue-600" />
@@ -572,6 +640,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                   </div>
                 </form>
               </div>
+              )}
 
             </div>
           </div>

@@ -139,6 +139,19 @@ export interface GuiaDespacho {
   eventos?: EventoTracking[];
 }
 
+/** Respuesta de Inventario al egreso de stock de una guía */
+export interface ConfirmacionStock {
+  ok: boolean;
+  id_movimiento_egreso?: number;
+  id_movimiento_liberacion?: number | null;
+  error?: string;
+  tipo_error?: string;
+  reintentable?: boolean;
+}
+
+/** Guías que esperan que Inventario confirme el egreso (las asigna el sistema) */
+export const ESTADOS_STOCK = ['Pendiente de stock', 'Error de stock'];
+
 export interface CotizacionResponse {
   cubicacion: {
     bultos: Array<BultoInput & { peso_volumetrico_kg: number; peso_a_cobrar_kg: number }>;

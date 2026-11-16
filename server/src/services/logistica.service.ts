@@ -15,6 +15,28 @@ import {
   LineaRecepcionInput,
 } from '../domain/cubicacion.js';
 import { EstadoOT } from '@prisma/client';
+import {
+  obtenerClienteInventario,
+  InventarioError,
+  type ClienteInventario,
+  type LineaDespachoInventario,
+} from '../integrations/inventario/index.js';
+
+/** Estados que asigna el sistema mientras Inventario confirma el egreso de stock */
+export const ESTADO_PENDIENTE_STOCK = 'Pendiente de stock';
+export const ESTADO_ERROR_STOCK = 'Error de stock';
+export const ESTADO_PREPARADO = 'Preparado';
+const ESTADOS_STOCK = [ESTADO_PENDIENTE_STOCK, ESTADO_ERROR_STOCK];
+
+/** Resultado de pedirle a Inventario que confirme el egreso de una guía */
+export interface ConfirmacionStock {
+  ok: boolean;
+  id_movimiento_egreso?: number;
+  id_movimiento_liberacion?: number | null;
+  error?: string;
+  tipo_error?: string;
+  reintentable?: boolean;
+}
 
 export class ValidationError extends Error {
   statusCode: number;
@@ -23,6 +45,21 @@ export class ValidationError extends Error {
     this.name = 'ValidationError';
     this.statusCode = statusCode;
   }
+}
+
+/**
+ * Convierte un error de Inventario en una respuesta para nuestro cliente:
+ * 503 si Inventario no está disponible (reintentar más tarde) y 502 si respondió con error.
+ */
+function errorDeInventario(err: unknown, accion: string): Error {
+  if (!(err instanceof InventarioError)) return err as Error;
+  if (err.reintentable) {
+    return new ValidationError(`Inventario no está disponible para ${accion}: ${err.message}. Intente más tarde.`, 503);
+  }
+  if (err.tipo === 'NO_AUTORIZADO') {
+    return new ValidationError(`Inventario rechazó la API key de Logística al ${accion}. Revise INVENTARIO_API_KEY.`, 502);
+  }
+  return new ValidationError(`Inventario respondió un error al ${accion}: ${err.message}`, 502);
 }
 
 export interface EmitirGuiaRequest {
@@ -49,9 +86,16 @@ export interface RegistrarRecepcionRequest {
 
 export class LogisticaService {
   private repository: LogisticaRepository;
+  private inventarioInyectado?: ClienteInventario;
 
-  constructor(repository?: LogisticaRepository) {
+  constructor(repository?: LogisticaRepository, inventario?: ClienteInventario) {
     this.repository = repository || new LogisticaRepository();
+    this.inventarioInyectado = inventario;
+  }
+
+  /** Cliente de Inventario (real o simulado según INVENTARIO_API_URL); inyectable en tests */
+  private get inventario(): ClienteInventario {
+    return this.inventarioInyectado ?? obtenerClienteInventario();
   }
 
   /**
@@ -180,11 +224,14 @@ export class LogisticaService {
   }
 
   /**
-   * Emite una nueva guía de despacho cumpliendo estrictamente con las 3 validaciones:
-   * 1. OT en estado 'CERRADO'
+   * Emite una guía de despacho y pide a Inventario que confirme el egreso de stock.
+   * Validaciones antes de crear nada:
+   * 1. OT en estado CERRADO o PARCIAL, con unidades recolectadas y sin otra guía (un pedido, una guía)
    * 2. Comuna destino con cobertura activa (vigente = true)
    * 3. Peso y dimensiones mayores a 0
-   * Realiza la transacción atómica en Prisma.
+   * 4. Reserva del pedido PENDIENTE en Inventario
+   * Luego la guía se crea en 'Pendiente de stock' y, según responda Inventario,
+   * pasa a 'Preparado' o queda en 'Error de stock' (se reintenta con reintentarConfirmacionStock).
    */
   async emitirGuia(input: EmitirGuiaRequest) {
     // 1. Obtener la OT
@@ -193,12 +240,32 @@ export class LogisticaService {
       throw new ValidationError(`La orden de trabajo ${input.ot_id} no existe`, 404);
     }
 
-    // VALIDACIÓN 1: Verificar que la OT exista y su estado sea estrictamente 'CERRADO'
-    if (ot.estado !== EstadoOT.CERRADO) {
+    // VALIDACIÓN 1: OT CERRADA (todo recolectado) o PARCIAL (se despacha lo recolectado e Inventario libera el resto)
+    if (ot.estado !== EstadoOT.CERRADO && ot.estado !== EstadoOT.PARCIAL) {
       throw new ValidationError(
-        'No se puede emitir guía: la OT no se encuentra en estado CERRADO',
+        `No se puede emitir guía: la OT debe estar CERRADO o PARCIAL (estado actual: ${ot.estado}).`,
         422
       );
+    }
+
+    // Un pedido se despacha en una sola guía (acordado con Inventario).
+    const guiasPrevias = await this.repository.getGuiasPorOt(ot.id);
+    if (guiasPrevias.length > 0) {
+      const enEspera = guiasPrevias.find((g) => ESTADOS_STOCK.includes(g.estado_actual));
+      if (enEspera) {
+        throw new ValidationError(
+          `La OT ${ot.id} ya tiene la guía ${enEspera.id} en "${enEspera.estado_actual}". Reintente la confirmación de stock de esa guía desde la consola de tracking.`,
+          409
+        );
+      }
+      throw new ValidationError(
+        `La OT ${ot.id} ya tiene la guía ${guiasPrevias[0].id} (${guiasPrevias[0].estado_actual}). Un pedido se despacha en una sola guía.`,
+        409
+      );
+    }
+
+    if (!this.lineasDespacho(ot).some((l) => l.cantidad > 0)) {
+      throw new ValidationError('La OT no tiene unidades recolectadas para despachar.', 422);
     }
 
     // Obtener transportista y servicio
@@ -272,17 +339,13 @@ export class LogisticaService {
       costoEnvio = calcularCostoEnvio(resultadoCubicacion.peso_cobrado_total_kg, null);
     }
 
+    // VALIDACIÓN 4: la reserva del pedido debe estar PENDIENTE en Inventario
+    await this.verificarReservaPendiente(ot.id_pedido);
+
     // Generar identificadores
     const guiaId = generarIdGuia();
     const numSeguimiento = generarNumeroSeguimiento(transportista.nombre);
     const usuarioResponsable = input.usuario_responsable || 'M. Pizarro';
-
-    // Preparar ítems para rebaja de inventario inv_mov
-    const itemsInventario = (ot.detalles || []).map((det: any) => ({
-      id_producto: det.id_producto,
-      cantidad: det.cant_recolectada || det.cant_solicitada,
-      referencia_origen: `${guiaId} / ${ot.id}`,
-    }));
 
     // Bultos a persistir
     const bultosAPersistir = resultadoCubicacion.bultos.map((b) => ({
@@ -304,19 +367,156 @@ export class LogisticaService {
       peso_real_total_kg: resultadoCubicacion.peso_real_total_kg,
       peso_volumetrico_total_kg: resultadoCubicacion.peso_volumetrico_total_kg,
       costo_envio: costoEnvio,
-      estado_inicial: 'Preparado',
+      estado_inicial: ESTADO_PENDIENTE_STOCK,
       usuario_responsable: usuarioResponsable,
       bultos: bultosAPersistir,
-      items_inventario: itemsInventario,
     };
 
-    // EJECUCIÓN TRANSACCIONAL
-    const guiaEmitida = await this.repository.emitirGuiaTransaccional(emisionData);
+    // EJECUCIÓN TRANSACCIONAL: guía, bultos y evento inicial (sin tocar stock)
+    const guiaCreada = await this.repository.emitirGuiaTransaccional(emisionData);
+
+    // Inventario confirma el egreso; la guía pasa a 'Preparado' o queda en 'Error de stock'
+    const { guia, inventario } = await this.confirmarEgreso(
+      guiaId,
+      ot,
+      numSeguimiento,
+      usuarioResponsable
+    );
 
     return {
-      mensaje: 'Guía de despacho emitida y movimiento de inventario registrado con éxito.',
-      guia: guiaEmitida,
+      mensaje: inventario.ok
+        ? 'Guía de despacho emitida. Inventario confirmó el egreso de stock.'
+        : `La guía ${guiaId} se creó, pero Inventario no confirmó el egreso: ${inventario.error}. Quedó en "${ESTADO_ERROR_STOCK}" y se puede reintentar desde la consola de tracking.`,
+      guia: guia ?? guiaCreada,
+      inventario,
     };
+  }
+
+  /**
+   * Vuelve a pedir a Inventario que confirme el egreso de una guía en 'Pendiente de stock'
+   * o 'Error de stock'. Es seguro repetirlo: Inventario es idempotente por id_despacho.
+   */
+  async reintentarConfirmacionStock(guiaId: string, usuarioResponsable?: string) {
+    const guiaActual = await this.repository.getGuiaById(guiaId);
+    if (!guiaActual) {
+      throw new ValidationError(`La guía ${guiaId} no existe`, 404);
+    }
+    if (!ESTADOS_STOCK.includes(guiaActual.estado_actual)) {
+      throw new ValidationError(
+        `La guía ${guiaId} está en "${guiaActual.estado_actual}"; solo se reintentan guías en "${ESTADO_PENDIENTE_STOCK}" o "${ESTADO_ERROR_STOCK}".`,
+        409
+      );
+    }
+
+    const ot = guiaActual.ot ?? (await this.repository.getOtById(guiaActual.ot_id));
+    if (!ot) {
+      throw new ValidationError(`La OT ${guiaActual.ot_id} de la guía ${guiaId} no existe`, 404);
+    }
+
+    const { guia, inventario } = await this.confirmarEgreso(
+      guiaId,
+      ot,
+      guiaActual.num_seguimiento,
+      usuarioResponsable || 'M. Pizarro'
+    );
+
+    return {
+      mensaje: inventario.ok
+        ? 'Inventario confirmó el egreso de stock. La guía quedó en "Preparado".'
+        : `Inventario aún no confirma el egreso: ${inventario.error}`,
+      guia,
+      inventario,
+    };
+  }
+
+  /**
+   * Líneas del egreso para Inventario: todas las de la OT, con lo recolectado tal cual
+   * (0 si no se encontró; Inventario libera esa parte de la reserva). Sin productos repetidos.
+   */
+  private lineasDespacho(ot: { detalles?: any[] }): LineaDespachoInventario[] {
+    const porProducto = new Map<number, number>();
+    for (const det of ot.detalles || []) {
+      const recolectada = Number(det.cant_recolectada ?? 0);
+      porProducto.set(det.id_producto, (porProducto.get(det.id_producto) ?? 0) + recolectada);
+    }
+    return [...porProducto].map(([id_producto, cantidad]) => ({ id_producto, cantidad }));
+  }
+
+  private async verificarReservaPendiente(idPedido: number) {
+    let reserva;
+    try {
+      reserva = await this.inventario.obtenerReserva(idPedido);
+    } catch (err) {
+      if (err instanceof InventarioError && err.tipo === 'NO_ENCONTRADO') {
+        throw new ValidationError(
+          `El pedido ${idPedido} no tiene una reserva de stock en Inventario; no se puede despachar.`,
+          422
+        );
+      }
+      throw errorDeInventario(err, 'consultar la reserva del pedido');
+    }
+
+    if (reserva.estado !== 'PENDIENTE') {
+      throw new ValidationError(
+        `La reserva del pedido ${idPedido} en Inventario está ${reserva.estado}; solo se despachan reservas PENDIENTE.`,
+        409
+      );
+    }
+  }
+
+  /**
+   * Llama al egreso de Inventario y deja registrado el resultado en la bitácora de la guía.
+   * Si Inventario falla, la guía queda en 'Error de stock' (no se lanza: la guía ya existe).
+   */
+  private async confirmarEgreso(
+    guiaId: string,
+    ot: { id_pedido: number; id_operador: number; detalles?: any[] },
+    numSeguimiento: string,
+    usuarioResponsable: string
+  ): Promise<{ guia: any; inventario: ConfirmacionStock }> {
+    try {
+      const resultado = await this.inventario.registrarDespacho({
+        id_despacho: guiaId,
+        num_seguimiento: numSeguimiento,
+        id_pedido: ot.id_pedido,
+        id_empleado: ot.id_operador,
+        lineas: this.lineasDespacho(ot),
+      });
+
+      const liberacion = resultado.liberacion
+        ? ` y liberó lo no recolectado (movimiento #${resultado.liberacion.id_movimiento})`
+        : '';
+      const { guia } = await this.repository.registrarEventoTracking(
+        guiaId,
+        ESTADO_PREPARADO,
+        usuarioResponsable,
+        `Inventario confirmó el egreso de stock (movimiento #${resultado.egreso.id_movimiento})${liberacion}.`
+      );
+
+      return {
+        guia,
+        inventario: {
+          ok: true,
+          id_movimiento_egreso: resultado.egreso.id_movimiento,
+          id_movimiento_liberacion: resultado.liberacion?.id_movimiento ?? null,
+        },
+      };
+    } catch (err) {
+      // Errores propios (p. ej. de base de datos) no se disfrazan de error de stock
+      if (!(err instanceof InventarioError)) throw err;
+
+      const { guia } = await this.repository.registrarEventoTracking(
+        guiaId,
+        ESTADO_ERROR_STOCK,
+        usuarioResponsable,
+        `Inventario no confirmó el egreso de stock: ${err.message}`
+      );
+
+      return {
+        guia,
+        inventario: { ok: false, error: err.message, tipo_error: err.tipo, reintentable: err.reintentable },
+      };
+    }
   }
 
   /**
@@ -337,6 +537,21 @@ export class LogisticaService {
   ) {
     if (!estado || estado.trim() === '') {
       throw new ValidationError('El estado del evento es obligatorio', 400);
+    }
+
+    // Los estados de stock los asigna el sistema según la respuesta de Inventario
+    if (ESTADOS_STOCK.includes(estado.trim())) {
+      throw new ValidationError(
+        `El estado "${estado.trim()}" lo asigna el sistema según la respuesta de Inventario; no se registra a mano.`,
+        400
+      );
+    }
+    const guiaActual = await this.repository.getGuiaById(guiaId);
+    if (guiaActual && ESTADOS_STOCK.includes(guiaActual.estado_actual)) {
+      throw new ValidationError(
+        `La guía ${guiaId} está en "${guiaActual.estado_actual}": Inventario aún no confirma el egreso. Reintente la confirmación de stock antes de registrar eventos.`,
+        409
+      );
     }
 
     return this.repository.registrarEventoTracking(
