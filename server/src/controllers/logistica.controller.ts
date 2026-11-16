@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { LogisticaService, ValidationError } from '../services/logistica.service.js';
+import { obtenerClienteInventario } from '../integrations/inventario/index.js';
 
 export class LogisticaController {
   private service: LogisticaService;
@@ -152,5 +153,11 @@ export class LogisticaController {
       console.error('Error al obtener historial de recepciones:', error);
       res.status(500).json({ error: 'Error al consultar historial de recepciones', detalle: error.message });
     }
+  };
+
+  /** Modo del cliente de Inventario (real o simulado) y si responde. 503 si no responde. */
+  getEstadoInventario = async (_req: Request, res: Response) => {
+    const estado = await obtenerClienteInventario().verificarConexion();
+    res.status(estado.ok ? 200 : 503).json(estado);
   };
 }

@@ -18,6 +18,14 @@ services:
       - NODE_ENV=production
       - CLIENT_URL=http://localhost:5173
       - DATABASE_URL=postgresql://si2_22026:SuContrasenaSegura%232026!@ep-royal-glade-ac55fitc-pooler.sa-east-1.aws.neon.tech:5432/si2_22026?schema=logistica&sslmode=require
+      # Integración con Inventario: se toman del .env de la raíz. Vacía = cliente simulado.
+      # Si Inventario corre en tu máquina (npm run start), usar http://host.docker.internal:3000/api/v1
+      - INVENTARIO_API_URL=${INVENTARIO_API_URL:-}
+      - INVENTARIO_API_KEY=${INVENTARIO_API_KEY:-}
+      - INVENTARIO_TIMEOUT_MS=${INVENTARIO_TIMEOUT_MS:-8000}
+    extra_hosts:
+      # Permite llegar a servicios de la máquina anfitriona también en Linux
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 10s

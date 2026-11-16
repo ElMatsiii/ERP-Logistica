@@ -113,6 +113,20 @@ La API quedará inmediatamente disponible en **`http://localhost:3001`**:
 * **Ver logs:** `npm run docker:server:logs` (o `docker compose logs -f server`)
 * **Detener contenedor:** `npm run docker:server:stop` (o `docker compose stop server`)
 
+### 5. Integración con Inventario
+
+Logística consulta y confirma stock en la API REST de Inventario (`server/src/integrations/inventario/`). Se configura en el `.env` de la raíz:
+
+| Variable | Valor |
+|---|---|
+| `INVENTARIO_API_URL` | URL base con `/api/v1`. **Vacía = modo simulado**: no se llama a Inventario y se usan datos en memoria |
+| `INVENTARIO_API_KEY` | API key del módulo `logistica`, entregada por Inventario (se envía como `Authorization: Bearer`) |
+| `INVENTARIO_TIMEOUT_MS` | Espera máxima por llamada (por defecto `8000`) |
+
+- Si Inventario corre en tu máquina, la URL es `http://localhost:3000/api/v1` con `npm run dev` y `http://host.docker.internal:3000/api/v1` desde el contenedor.
+- Al iniciar, el servidor indica en consola si usa el cliente **REAL** o **SIMULADO**.
+- `GET /api/logistica/integraciones/inventario` muestra el modo y si Inventario responde (`503` si no).
+
 ---
 
 ## Endpoints de la API REST (`/api/logistica`)
@@ -126,4 +140,5 @@ La API quedará inmediatamente disponible en **`http://localhost:3001`**:
 | `POST` | `/api/logistica/guias` | Emisión transaccional de Guía de Despacho |
 | `GET` | `/api/logistica/tracking` | Consulta con filtros (`busqueda`, `estado`, `transportista`, `fecha`) |
 | `POST` | `/api/logistica/tracking/:id_guia/evento` | Inserción en bitácora append-only y actualización de estado |
+| `GET` | `/api/logistica/integraciones/inventario` | Modo del cliente de Inventario (real o simulado) y si responde |
 | `GET` | `/api/health` | Estado del servicio y conexión a BD |

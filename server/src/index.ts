@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { createLogisticaRouter } from './routes/logistica.routes.js';
 import { checkDatabaseConnection } from './lib/prisma.js';
+import { obtenerClienteInventario } from './integrations/inventario/index.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
@@ -65,4 +66,7 @@ app.listen(PORT, async () => {
     console.warn('[INFO] Verifica la variable DATABASE_URL en el archivo .env');
     console.warn('[INFO] Para migrar y poblar: npm run db:setup');
   }
+
+  // Muestra si se usará Inventario real o simulado (según INVENTARIO_API_URL)
+  obtenerClienteInventario();
 });
