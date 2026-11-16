@@ -88,6 +88,22 @@ npm run dev
 
 Abre en tu navegador: **`http://localhost:5173`**
 
+### 4. Ejecutar el Backend en Docker (Para Integración con Otros Módulos)
+
+Si otro módulo (Ventas, Inventario, RRHH) o el equipo docente necesita consumir la API REST de Logística localmente sin instalar dependencias de Node.js:
+
+```bash
+# Construir y levantar el backend de Logística en segundo plano
+docker compose up --build -d server
+# o bien usando el script de npm:
+npm run docker:server
+```
+
+La API quedará inmediatamente disponible en **`http://localhost:3001`**:
+* **Health Check:** `GET http://localhost:3001/api/health`
+* **Ver logs:** `npm run docker:server:logs` (o `docker compose logs -f server`)
+* **Detener contenedor:** `npm run docker:server:stop` (o `docker compose stop server`)
+
 ---
 
 ## Endpoints de la API REST (`/api/logistica`)
