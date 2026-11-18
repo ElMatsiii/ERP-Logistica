@@ -23,12 +23,14 @@ import {
   ConfirmacionStock,
   ESTADOS_STOCK,
 } from '../types';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchPedidosPendientes,
   fetchOtById,
   fetchTransportistas,
   cotizarEnvio,
   emitirGuiaDespacho,
+  invalidarCache,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 import { ModalConfirmacion } from './ModalConfirmacion';
@@ -42,6 +44,8 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   onGuiaEmitida,
   onGoToTracking,
 }) => {
+  const { user } = useAuth();
+
   // Estados para datos maestros
   const [ots, setOts] = useState<OTPicking[]>([]);
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
@@ -69,6 +73,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   const [tarifaEstimada, setTarifaEstimada] = useState<number>(0);
   const [tieneCobertura, setTieneCobertura] = useState<boolean>(true);
   const [comunaDestino, setComunaDestino] = useState<string>('');
+  const [cotizando, setCotizando] = useState<boolean>(false);
 
   // Estados de emisión
   const [emitirCargando, setEmitirCargando] = useState<boolean>(false);
@@ -78,13 +83,14 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
 
   // Cargar lista inicial de OTs y Transportistas
-  const cargarDatos = async () => {
+  const cargarDatos = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setErrorCarga(null);
       const [listaOts, listaTransp] = await Promise.all([
-        fetchPedidosPendientes(),
-        fetchTransportistas(),
+        fetchPedidosPendientes(f),
+        fetchTransportistas(f),
       ]);
       setOts(listaOts);
       setTransportistas(listaTransp);
@@ -166,7 +172,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
     }
   }, [transportistaId, transportistas]);
 
-  // Cálculo en tiempo real de Cubicacion (Largo * Alto * Ancho / Factor) y Cotización
+  // Cálculo en tiempo real de Cubicación (Largo * Alto * Ancho / Factor) y Cotización
   useEffect(() => {
     const largo = Number(dimensiones.largo_cm) || 0;
     const alto = Number(dimensiones.alto_cm) || 0;
@@ -180,22 +186,37 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
     setPesoVolumetrico(vol);
     setPesoCobrado(cobrado);
 
-    // Cotización remota si la OT está disponible
+    // Estimación inmediata local
+    setTarifaEstimada((prev) => (prev > 0 ? prev : 4500 + Math.max(0, Math.ceil(cobrado - 2) * 1100)));
+
+    // Cotización remota con debounce (150ms) si los datos mínimos están presentes
     if (otSeleccionadaId && transportistaId && servicioId && largo > 0 && alto > 0 && ancho > 0 && real > 0) {
-      cotizarEnvio({
-        ot_id: otSeleccionadaId,
-        transportista_id: transportistaId,
-        servicio_id: servicioId,
-        bultos: [dimensiones],
-      })
-        .then((res) => {
-          setTieneCobertura(res.tiene_cobertura);
-          setTarifaEstimada(res.costo_estimado);
+      setCotizando(true);
+      const timer = setTimeout(() => {
+        cotizarEnvio({
+          ot_id: otSeleccionadaId,
+          transportista_id: transportistaId,
+          servicio_id: servicioId,
+          bultos: [dimensiones],
         })
-        .catch(() => {
-          // Si falla cotización remota, estimar localmente
-          setTarifaEstimada(4500 + Math.max(0, Math.ceil(cobrado - 2) * 1100));
-        });
+          .then((res) => {
+            setTieneCobertura(res.tiene_cobertura);
+            setTarifaEstimada(res.costo_estimado);
+          })
+          .catch(() => {
+            // Si falla cotización remota, estimar localmente
+            setTarifaEstimada(4500 + Math.max(0, Math.ceil(cobrado - 2) * 1100));
+          })
+          .finally(() => {
+            setCotizando(false);
+          });
+      }, 150);
+
+      return () => {
+        clearTimeout(timer);
+      };
+    } else {
+      setCotizando(false);
     }
   }, [dimensiones, factorVolumetrico, otSeleccionadaId, transportistaId, servicioId]);
 
@@ -244,7 +265,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
         transportista_id: transportistaId,
         servicio_id: servicioId,
         bultos: [dimensiones],
-        usuario_responsable: 'M. Pizarro (Coordinador de Despacho)',
+        usuario_responsable: `${user.nombre} (${user.rol_nombre})`,
       });
 
       setGuiaEmitidaReciente(res.guia);
@@ -292,7 +313,10 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
         </div>
 
         <button
-          onClick={cargarDatos}
+          onClick={() => {
+            invalidarCache();
+            cargarDatos(true);
+          }}
           disabled={cargando}
           className="self-start md:self-auto inline-flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm transition-all"
         >
@@ -702,7 +726,15 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             {/* Preview de Tarifa y Cobertura */}
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col justify-between">
               <div>
-                <span className="text-xs text-slate-400 block font-medium">Estado de Cobertura</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400 block font-medium">Estado de Cobertura</span>
+                  {cotizando && (
+                    <span className="text-[10px] text-slate-400 font-medium flex items-center">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin mr-1" />
+                      Verificando...
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center space-x-2 mt-1">
                   {tieneCobertura ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">
