@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Inbox,
   ChevronDown,
-  Lock,
   CheckCircle2,
   Users,
   Warehouse,
@@ -262,10 +261,10 @@ export const NavTabs: React.FC<NavTabsProps> = ({ activeTab, setActiveTab }) => 
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
         
-        {/* Pestañas funcionales con RBAC */}
+        {/* Pestañas funcionales con RBAC: solo se renderizan las permitidas */}
         <nav className="flex space-x-2">
           {/* Pestaña: Emisión de Guía */}
-          {emisionPermitida ? (
+          {emisionPermitida && (
             <button
               onClick={() => setActiveTab('emision')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -277,19 +276,10 @@ export const NavTabs: React.FC<NavTabsProps> = ({ activeTab, setActiveTab }) => 
               <Package className="w-4 h-4" />
               <span>Emisión de Guía</span>
             </button>
-          ) : (
-            <div
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-75"
-              title={`Acceso bloqueado: El rol ${user.rol_nombre} no tiene permisos para emitir guías.`}
-            >
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              <span className="line-through">Emisión de Guía</span>
-              <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-bold">Bloqueado</span>
-            </div>
           )}
 
           {/* Pestaña: Consola de Tracking */}
-          {trackingPermitido ? (
+          {trackingPermitido && (
             <button
               onClick={() => setActiveTab('tracking')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -301,19 +291,10 @@ export const NavTabs: React.FC<NavTabsProps> = ({ activeTab, setActiveTab }) => 
               <Truck className="w-4 h-4" />
               <span>Consola de Tracking</span>
             </button>
-          ) : (
-            <div
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-75"
-              title={`Acceso bloqueado: El rol ${user.rol_nombre} no tiene permisos para la consola de tracking.`}
-            >
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              <span className="line-through">Consola de Tracking</span>
-              <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-bold">Bloqueado</span>
-            </div>
           )}
 
           {/* Pestaña: Recepción en Muelle */}
-          {recepcionPermitida ? (
+          {recepcionPermitida && (
             <button
               onClick={() => setActiveTab('recepcion')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -325,15 +306,6 @@ export const NavTabs: React.FC<NavTabsProps> = ({ activeTab, setActiveTab }) => 
               <Inbox className="w-4 h-4" />
               <span>Recepción en Muelle</span>
             </button>
-          ) : (
-            <div
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-75"
-              title={`Acceso bloqueado: El rol ${user.rol_nombre} no tiene permisos para recepción en muelle.`}
-            >
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              <span className="line-through">Recepción en Muelle</span>
-              <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-bold">Bloqueado</span>
-            </div>
           )}
         </nav>
 
