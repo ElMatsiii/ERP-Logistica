@@ -7,7 +7,6 @@ import {
   ChevronDown,
   CheckCircle2,
   Users,
-  Warehouse,
   Radio,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -42,17 +41,17 @@ export const Navbar: React.FC = () => {
           dot: 'bg-emerald-400',
           icon: ShieldCheck,
         };
-      case 'OPERADOR_BODEGA':
+      case 'OPERADOR_DESPACHO':
         return {
           bg: 'bg-blue-500/20 text-blue-200 border-blue-400/40',
           dot: 'bg-blue-400',
-          icon: Warehouse,
+          icon: Package,
         };
-      case 'TRANSPORTISTA':
+      case 'OPERADOR_RECEPCION':
         return {
-          bg: 'bg-amber-500/20 text-amber-200 border-amber-400/40',
-          dot: 'bg-amber-400',
-          icon: Truck,
+          bg: 'bg-purple-500/20 text-purple-200 border-purple-400/40',
+          dot: 'bg-purple-400',
+          icon: Inbox,
         };
       default:
         return {
