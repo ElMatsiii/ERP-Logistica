@@ -198,9 +198,9 @@ export const Navbar: React.FC = () => {
                                 key={tab}
                                 className="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200"
                               >
-                                {tab === 'emision' && '📦 Emisión'}
-                                {tab === 'tracking' && '🚚 Tracking'}
-                                {tab === 'recepcion' && '📥 Muelle'}
+                                {tab === 'emision' && 'Emisión'}
+                                {tab === 'tracking' && 'Tracking'}
+                                {tab === 'recepcion' && 'Muelle'}
                               </span>
                             ))}
                           </div>

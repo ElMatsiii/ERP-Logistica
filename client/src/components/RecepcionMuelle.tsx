@@ -392,7 +392,7 @@ export const RecepcionMuelle: React.FC = () => {
               onClick={() => setExitoRecepcion(null)}
               className="text-emerald-700 hover:text-emerald-900 text-sm font-semibold p-1"
             >
-              ✕ Cerrar
+              Cerrar
             </button>
           </div>
         </div>

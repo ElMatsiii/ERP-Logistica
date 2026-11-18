@@ -635,9 +635,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                             setNuevoEstado('En tránsito');
                             setNuevaObservacion('Móvil en ruta hacia domicilio del cliente');
                           }}
-                          className="px-2 py-1.5 text-[11px] font-medium bg-white hover:bg-amber-100/70 border border-amber-200 text-amber-900 rounded-lg text-left transition-colors"
+                          className="px-2 py-1.5 text-[11px] font-medium bg-white hover:bg-amber-100/70 border border-amber-200 text-amber-900 rounded-lg text-left transition-colors flex items-center space-x-1.5"
                         >
-                          🚚 En Reparto
+                          <Truck className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                          <span>En Reparto</span>
                         </button>
                         <button
                           type="button"
@@ -645,9 +646,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                             setNuevoEstado('Entregado conforme');
                             setNuevaObservacion('Entregado en domicilio, firma conforme del receptor');
                           }}
-                          className="px-2 py-1.5 text-[11px] font-medium bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-left transition-colors"
+                          className="px-2 py-1.5 text-[11px] font-medium bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-left transition-colors flex items-center space-x-1.5"
                         >
-                          ✅ Entregado Conforme
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                          <span>Entregado Conforme</span>
                         </button>
                         <button
                           type="button"
@@ -655,9 +657,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                             setNuevoEstado('Entrega Fallida');
                             setNuevaObservacion('1° Intento Fallido: Domicilio cerrado sin respuesta');
                           }}
-                          className="px-2 py-1.5 text-[11px] font-medium bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-lg text-left transition-colors"
+                          className="px-2 py-1.5 text-[11px] font-medium bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-lg text-left transition-colors flex items-center space-x-1.5"
                         >
-                          ❌ 1° Visita Fallida
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                          <span>1° Visita Fallida</span>
                         </button>
                         <button
                           type="button"
@@ -665,9 +668,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                             setNuevoEstado('Entrega Fallida');
                             setNuevaObservacion('2° Intento Fallido: Dirección no localizada en destino');
                           }}
-                          className="px-2 py-1.5 text-[11px] font-medium bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-lg text-left transition-colors"
+                          className="px-2 py-1.5 text-[11px] font-medium bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-lg text-left transition-colors flex items-center space-x-1.5"
                         >
-                          ⚠️ 2° Visita Fallida
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                          <span>2° Visita Fallida</span>
                         </button>
                       </div>
                     </div>
