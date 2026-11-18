@@ -30,6 +30,7 @@ import {
   fetchHistorialRecepciones,
   fetchEmpleados,
   fetchBodegas,
+  invalidarCache,
 } from '../api/logisticaApi';
 
 type ConteoLinea = { recibida: number; danada: number; motivo: string; bodega: number | null };
@@ -79,13 +80,14 @@ export const RecepcionMuelle: React.FC = () => {
   const [vistaActiva, setVistaActiva] = useState<'formulario' | 'historial'>('formulario');
 
   // Cargar órdenes de compra y el historial
-  const cargarDatos = async () => {
+  const cargarDatos = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setErrorCarga(null);
       const [listaCompras, listaHistorial] = await Promise.all([
-        fetchComprasPendientes(),
-        fetchHistorialRecepciones(),
+        fetchComprasPendientes(f),
+        fetchHistorialRecepciones(f),
       ]);
       setCompras(listaCompras);
       setHistorial(listaHistorial);
@@ -104,14 +106,15 @@ export const RecepcionMuelle: React.FC = () => {
   };
 
   // Empleados y bodegas se cargan aparte: si Inventario no responde, el resto de la pantalla funciona igual
-  const cargarAuxiliares = async () => {
+  const cargarAuxiliares = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
-      setEmpleados(await fetchEmpleados());
+      setEmpleados(await fetchEmpleados(f));
     } catch (err: any) {
       console.error('Error al cargar empleados:', err);
     }
     try {
-      setBodegas(await fetchBodegas());
+      setBodegas(await fetchBodegas(f));
       setErrorBodegas(null);
     } catch (err: any) {
       setErrorBodegas(err.message || 'No se pudieron cargar las bodegas de Inventario.');
@@ -315,7 +318,11 @@ export const RecepcionMuelle: React.FC = () => {
               <span>Historial ({historial.length})</span>
             </button>
             <button
-              onClick={cargarDatos}
+              onClick={() => {
+                invalidarCache('compras');
+                invalidarCache('historial');
+                cargarDatos(true);
+              }}
               disabled={cargando}
               title="Refrescar datos"
               className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
@@ -497,7 +504,7 @@ export const RecepcionMuelle: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={cargarAuxiliares}
+                    onClick={() => cargarAuxiliares(true)}
                     className="font-bold text-amber-800 hover:underline whitespace-nowrap"
                   >
                     Reintentar

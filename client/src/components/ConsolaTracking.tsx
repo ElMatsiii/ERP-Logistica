@@ -26,6 +26,7 @@ import {
   fetchTransportistas,
   registrarEventoTracking,
   reintentarStockGuia,
+  invalidarCache,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 
@@ -73,16 +74,20 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   }, [guiaSeleccionada?.id]);
 
   // Cargar datos de tracking
-  const cargarTracking = async () => {
+  const cargarTracking = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setError(null);
-      const data = await fetchTracking({
-        busqueda,
-        transportista: filtroTransportista,
-        estado: filtroEstado,
-        fecha: filtroFecha,
-      });
+      const data = await fetchTracking(
+        {
+          busqueda,
+          transportista: filtroTransportista,
+          estado: filtroEstado,
+          fecha: filtroFecha,
+        },
+        f
+      );
       setGuias(data);
 
       // Si había una guía seleccionada, actualizarla con los datos frescos
@@ -205,7 +210,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
         </div>
 
         <button
-          onClick={cargarTracking}
+          onClick={() => {
+            invalidarCache('tracking');
+            cargarTracking(true);
+          }}
           disabled={cargando}
           className="inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 shadow-sm transition-all"
         >

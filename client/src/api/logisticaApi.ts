@@ -42,27 +42,98 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 /* =========================================================================
+ * CACHÉ EN MEMORIA Y DEDUPLICACIÓN DE PETICIONES CONCURRENTES
+ * ========================================================================= */
+interface CacheEntry<T> {
+  data: T;
+  expira: number;
+}
+
+const memoriaCache = new Map<string, CacheEntry<any>>();
+const peticionesEnVuelo = new Map<string, Promise<any>>();
+
+/**
+ * Invalida entradas de la caché por prefijo o completamente si no se especifica.
+ */
+export function invalidarCache(prefijo?: string): void {
+  if (!prefijo) {
+    memoriaCache.clear();
+    return;
+  }
+  for (const key of Array.from(memoriaCache.keys())) {
+    if (key.startsWith(prefijo)) {
+      memoriaCache.delete(key);
+    }
+  }
+}
+
+async function conCache<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlMs: number,
+  forceRefresh = false
+): Promise<T> {
+  if (!forceRefresh) {
+    const entry = memoriaCache.get(key);
+    if (entry && entry.expira > Date.now()) {
+      return entry.data as T;
+    }
+  }
+
+  // Deduplica llamadas concurrentes que coincidan con la misma clave
+  if (peticionesEnVuelo.has(key)) {
+    return peticionesEnVuelo.get(key) as Promise<T>;
+  }
+
+  const promesa = fetcher()
+    .then((data) => {
+      memoriaCache.set(key, { data, expira: Date.now() + ttlMs });
+      return data;
+    })
+    .finally(() => {
+      peticionesEnVuelo.delete(key);
+    });
+
+  peticionesEnVuelo.set(key, promesa);
+  return promesa;
+}
+
+/* =========================================================================
  * ENDPOINTS DE AUTENTICACIÓN Y ROLES (RBAC)
  * ========================================================================= */
 
-export async function fetchRoles(): Promise<RolConfig[]> {
-  const res = await fetch(`${API_BASE}/auth/roles`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error('Error al obtener catálogo de roles');
-  }
-  return res.json();
+export async function fetchRoles(forceRefresh = false): Promise<RolConfig[]> {
+  return conCache(
+    'roles',
+    async () => {
+      const res = await fetch(`${API_BASE}/auth/roles`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        throw new Error('Error al obtener catálogo de roles');
+      }
+      return res.json();
+    },
+    5 * 60 * 1000,
+    forceRefresh
+  );
 }
 
-export async function fetchUsuarios(): Promise<UsuarioLogistica[]> {
-  const res = await fetch(`${API_BASE}/auth/usuarios`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error('Error al obtener lista de usuarios');
-  }
-  return res.json();
+export async function fetchUsuarios(forceRefresh = false): Promise<UsuarioLogistica[]> {
+  return conCache(
+    'usuarios',
+    async () => {
+      const res = await fetch(`${API_BASE}/auth/usuarios`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        throw new Error('Error al obtener lista de usuarios');
+      }
+      return res.json();
+    },
+    5 * 60 * 1000,
+    forceRefresh
+  );
 }
 
 export async function loginUsuario(idEmpleado: number): Promise<{ usuario: UsuarioLogistica }> {
@@ -78,6 +149,7 @@ export async function loginUsuario(idEmpleado: number): Promise<{ usuario: Usuar
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || 'Error al iniciar sesión');
   }
+  invalidarCache(); // Limpiar caches al cambiar de sesión/rol
   return res.json();
 }
 
@@ -85,37 +157,58 @@ export async function loginUsuario(idEmpleado: number): Promise<{ usuario: Usuar
  * ENDPOINTS DE LOGÍSTICA Y TRANSPORTE
  * ========================================================================= */
 
-export async function fetchPedidosPendientes(): Promise<OTPicking[]> {
-  const res = await fetch(`${API_BASE}/pedidos-pendientes`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al obtener órdenes de trabajo pendientes');
-  }
-  return res.json();
+export async function fetchPedidosPendientes(forceRefresh = false): Promise<OTPicking[]> {
+  return conCache(
+    'pedidos_pendientes',
+    async () => {
+      const res = await fetch(`${API_BASE}/pedidos-pendientes`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al obtener órdenes de trabajo pendientes');
+      }
+      return res.json();
+    },
+    20 * 1000, // 20 segundos de caché para navegación fluida entre pestañas
+    forceRefresh
+  );
 }
 
-export async function fetchOtById(id: string): Promise<OTPicking> {
-  const res = await fetch(`${API_BASE}/ots/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Error al obtener detalle de OT ${id}`);
-  }
-  return res.json();
+export async function fetchOtById(id: string, forceRefresh = false): Promise<OTPicking> {
+  return conCache(
+    `ot_${id}`,
+    async () => {
+      const res = await fetch(`${API_BASE}/ots/${id}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error al obtener detalle de OT ${id}`);
+      }
+      return res.json();
+    },
+    60 * 1000, // 1 minuto de caché para detalle de OT
+    forceRefresh
+  );
 }
 
-export async function fetchTransportistas(): Promise<Transportista[]> {
-  const res = await fetch(`${API_BASE}/transportistas`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al obtener transportistas');
-  }
-  return res.json();
+export async function fetchTransportistas(forceRefresh = false): Promise<Transportista[]> {
+  return conCache(
+    'transportistas',
+    async () => {
+      const res = await fetch(`${API_BASE}/transportistas`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al obtener transportistas');
+      }
+      return res.json();
+    },
+    5 * 60 * 1000, // 5 minutos para datos maestros de transportistas y tarifas
+    forceRefresh
+  );
 }
 
 export async function cotizarEnvio(payload: {
@@ -124,19 +217,30 @@ export async function cotizarEnvio(payload: {
   servicio_id: number;
   bultos: BultoInput[];
 }): Promise<CotizacionResponse> {
-  const res = await fetch(`${API_BASE}/cotizar`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+  const bultosKey = payload.bultos
+    .map((b) => `${b.largo_cm}x${b.alto_cm}x${b.ancho_cm}@${b.peso_real_kg}`)
+    .join(';');
+  const key = `cotizar_${payload.ot_id}_${payload.transportista_id}_${payload.servicio_id}_${bultosKey}`;
+
+  return conCache(
+    key,
+    async () => {
+      const res = await fetch(`${API_BASE}/cotizar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al cotizar envío');
+      }
+      return res.json();
     },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al cotizar envío');
-  }
-  return res.json();
+    2 * 60 * 1000 // 2 minutos de caché por combinación de dimensiones
+  );
 }
 
 export async function emitirGuiaDespacho(payload: {
@@ -165,6 +269,12 @@ export async function emitirGuiaDespacho(payload: {
     throw err;
   }
 
+  // Invalidar caches afectadas por la nueva guía
+  invalidarCache('pedidos_pendientes');
+  invalidarCache(`ot_${payload.ot_id}`);
+  invalidarCache('cotizar_');
+  invalidarCache('tracking');
+
   return data;
 }
 
@@ -185,15 +295,20 @@ export async function reintentarStockGuia(
   if (!res.ok) {
     throw new Error(data.error || 'Error al reintentar la confirmación de stock');
   }
+
+  invalidarCache('tracking');
   return data;
 }
 
-export async function fetchTracking(filtros: {
-  estado?: string;
-  transportista?: string;
-  fecha?: string;
-  busqueda?: string;
-}): Promise<GuiaDespacho[]> {
+export async function fetchTracking(
+  filtros: {
+    estado?: string;
+    transportista?: string;
+    fecha?: string;
+    busqueda?: string;
+  },
+  forceRefresh = false
+): Promise<GuiaDespacho[]> {
   const params = new URLSearchParams();
   if (filtros.estado) params.append('estado', filtros.estado);
   if (filtros.transportista) params.append('transportista', filtros.transportista);
@@ -202,15 +317,23 @@ export async function fetchTracking(filtros: {
 
   const query = params.toString();
   const url = query ? `${API_BASE}/tracking?${query}` : `${API_BASE}/tracking`;
+  const key = `tracking_${query}`;
 
-  const res = await fetch(url, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al consultar tracking');
-  }
-  return res.json();
+  return conCache(
+    key,
+    async () => {
+      const res = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al consultar tracking');
+      }
+      return res.json();
+    },
+    15 * 1000, // 15 segundos de caché para tracking
+    forceRefresh
+  );
 }
 
 export async function registrarEventoTracking(
@@ -236,29 +359,46 @@ export async function registrarEventoTracking(
     throw new Error(data.error || 'Error al registrar evento en bitácora');
   }
 
+  // Invalidar caché de tracking tras nuevo evento
+  invalidarCache('tracking');
+
   return data;
 }
 
-export async function fetchComprasPendientes(): Promise<OrdenCompra[]> {
-  const res = await fetch(`${API_BASE}/compras-pendientes`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al obtener órdenes de compra pendientes');
-  }
-  return res.json();
+export async function fetchComprasPendientes(forceRefresh = false): Promise<OrdenCompra[]> {
+  return conCache(
+    'compras_pendientes',
+    async () => {
+      const res = await fetch(`${API_BASE}/compras-pendientes`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al obtener órdenes de compra pendientes');
+      }
+      return res.json();
+    },
+    20 * 1000,
+    forceRefresh
+  );
 }
 
-export async function fetchCompraById(id: number): Promise<OrdenCompra> {
-  const res = await fetch(`${API_BASE}/compras/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Error al obtener orden de compra #${id}`);
-  }
-  return res.json();
+export async function fetchCompraById(id: number, forceRefresh = false): Promise<OrdenCompra> {
+  return conCache(
+    `compra_${id}`,
+    async () => {
+      const res = await fetch(`${API_BASE}/compras/${id}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error al obtener orden de compra #${id}`);
+      }
+      return res.json();
+    },
+    60 * 1000,
+    forceRefresh
+  );
 }
 
 export async function registrarRecepcionMuelle(
@@ -281,40 +421,66 @@ export async function registrarRecepcionMuelle(
     throw error;
   }
 
+  // Invalidar compras e historial tras recepción exitosa
+  invalidarCache('compras_');
+  invalidarCache('compra_');
+  invalidarCache('historial_recepciones');
+
   return data;
 }
 
 /** Empleados para elegir al receptor en muelle */
-export async function fetchEmpleados(): Promise<Empleado[]> {
-  const res = await fetch(`${API_BASE}/empleados`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al obtener empleados');
-  }
-  return res.json();
+export async function fetchEmpleados(forceRefresh = false): Promise<Empleado[]> {
+  return conCache(
+    'empleados',
+    async () => {
+      const res = await fetch(`${API_BASE}/empleados`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al obtener empleados');
+      }
+      return res.json();
+    },
+    5 * 60 * 1000,
+    forceRefresh
+  );
 }
 
 /** Bodegas de Inventario donde ingresa la mercadería recibida */
-export async function fetchBodegas(): Promise<Bodega[]> {
-  const res = await fetch(`${API_BASE}/bodegas`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al obtener bodegas de Inventario');
-  }
-  return res.json();
+export async function fetchBodegas(forceRefresh = false): Promise<Bodega[]> {
+  return conCache(
+    'bodegas',
+    async () => {
+      const res = await fetch(`${API_BASE}/bodegas`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al obtener bodegas de Inventario');
+      }
+      return res.json();
+    },
+    5 * 60 * 1000,
+    forceRefresh
+  );
 }
 
-export async function fetchHistorialRecepciones(): Promise<RecepcionRegistro[]> {
-  const res = await fetch(`${API_BASE}/recepciones`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al consultar historial de recepciones');
-  }
-  return res.json();
+export async function fetchHistorialRecepciones(forceRefresh = false): Promise<RecepcionRegistro[]> {
+  return conCache(
+    'historial_recepciones',
+    async () => {
+      const res = await fetch(`${API_BASE}/recepciones`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al consultar historial de recepciones');
+      }
+      return res.json();
+    },
+    20 * 1000,
+    forceRefresh
+  );
 }
