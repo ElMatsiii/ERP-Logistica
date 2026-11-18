@@ -18,7 +18,10 @@ import {
   ChevronRight,
   ShieldCheck,
   Send,
+  Navigation,
+  Sparkles,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { GuiaDespacho, Transportista, ESTADOS_STOCK } from '../types';
 import {
   fetchTracking,
@@ -48,12 +51,18 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   // Guía seleccionada para el Panel Lateral (Split View)
   const [guiaSeleccionada, setGuiaSeleccionada] = useState<GuiaDespacho | null>(null);
 
+  const { user } = useAuth();
+
   // Formulario de nuevo evento
   const [nuevoEstado, setNuevoEstado] = useState<string>('En tránsito');
   const [nuevaObservacion, setNuevaObservacion] = useState<string>('');
-  const [usuarioResponsable, setUsuarioResponsable] = useState<string>('M. Pizarro');
+  const [usuarioResponsable, setUsuarioResponsable] = useState<string>(user.nombre);
   const [guardandoEvento, setGuardandoEvento] = useState<boolean>(false);
   const [mensajeExitoEvento, setMensajeExitoEvento] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUsuarioResponsable(user.nombre);
+  }, [user]);
 
   // Reintento de la confirmación de stock con Inventario
   const [reintentandoStock, setReintentandoStock] = useState<boolean>(false);
@@ -206,6 +215,34 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
           <span>Refrescar Lista</span>
         </button>
       </div>
+
+      {/* Banner de Modo Conductor / Transportista en Terreno (Sprint 3 RBAC) */}
+      {user.rol === 'TRANSPORTISTA' && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-200">
+              <Truck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-slate-900 text-sm">
+                  Modo Conductor Activo · {user.nombre}
+                </span>
+                <span className="text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Móvil de Reparto
+                </span>
+              </div>
+              <p className="text-xs text-amber-900/80 mt-0.5">
+                Registrando bitácora en ruta. Tus confirmaciones de entrega y visitas fallidas se reflejan en tiempo real para Ventas y el cliente final.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 text-xs font-semibold text-amber-800 bg-white/80 px-3 py-1.5 rounded-lg border border-amber-200 self-start sm:self-auto">
+            <Navigation className="w-4 h-4 text-amber-600" />
+            <span>Vehículo Asignado: Furgón Norte-04</span>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================
           BARRA SUPERIOR CON INPUTS DE FILTRO
@@ -585,6 +622,57 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                 )}
 
                 <form onSubmit={handleRegistrarEvento} className="space-y-3">
+                  {user.rol === 'TRANSPORTISTA' && (
+                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
+                      <div className="flex items-center space-x-1.5 text-[11px] font-bold text-amber-900 mb-2">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Atajos rápidos de Chofer en Ruta:</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNuevoEstado('En tránsito');
+                            setNuevaObservacion('Móvil en ruta hacia domicilio del cliente');
+                          }}
+                          className="px-2 py-1.5 text-[11px] font-medium bg-white hover:bg-amber-100/70 border border-amber-200 text-amber-900 rounded-lg text-left transition-colors"
+                        >
+                          🚚 En Reparto
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNuevoEstado('Entregado conforme');
+                            setNuevaObservacion('Entregado en domicilio, firma conforme del receptor');
+                          }}
+                          className="px-2 py-1.5 text-[11px] font-medium bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-left transition-colors"
+                        >
+                          ✅ Entregado Conforme
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNuevoEstado('Entrega Fallida');
+                            setNuevaObservacion('1° Intento Fallido: Domicilio cerrado sin respuesta');
+                          }}
+                          className="px-2 py-1.5 text-[11px] font-medium bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-lg text-left transition-colors"
+                        >
+                          ❌ 1° Visita Fallida
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNuevoEstado('Entrega Fallida');
+                            setNuevaObservacion('2° Intento Fallido: Dirección no localizada en destino');
+                          }}
+                          className="px-2 py-1.5 text-[11px] font-medium bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-lg text-left transition-colors"
+                        >
+                          ⚠️ 2° Visita Fallida
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
                       Nuevo Estado del Envío

@@ -11,12 +11,84 @@ import {
   IngresoInventario,
   Empleado,
   Bodega,
+  UsuarioLogistica,
+  RolConfig,
 } from '../types';
 
 const API_BASE = '/api/logistica';
 
+/**
+ * Retorna las cabeceras de autenticación y rol activo desde localStorage.
+ */
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('lesgo_logistica_usuario_activo');
+    if (raw) {
+      const user = JSON.parse(raw);
+      return {
+        'x-user-id': String(user.id_empleado),
+        'x-user-role': String(user.rol),
+        'x-user-name': String(user.nombre),
+      };
+    }
+  } catch {
+    // Si falla la lectura, usar valor por defecto
+  }
+  return {
+    'x-user-id': '305',
+    'x-user-role': 'COORDINADOR_LOGISTICA',
+    'x-user-name': 'Maximiliano Pizarro',
+  };
+}
+
+/* =========================================================================
+ * ENDPOINTS DE AUTENTICACIÓN Y ROLES (RBAC)
+ * ========================================================================= */
+
+export async function fetchRoles(): Promise<RolConfig[]> {
+  const res = await fetch(`${API_BASE}/auth/roles`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error('Error al obtener catálogo de roles');
+  }
+  return res.json();
+}
+
+export async function fetchUsuarios(): Promise<UsuarioLogistica[]> {
+  const res = await fetch(`${API_BASE}/auth/usuarios`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error('Error al obtener lista de usuarios');
+  }
+  return res.json();
+}
+
+export async function loginUsuario(idEmpleado: number): Promise<{ usuario: UsuarioLogistica }> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ id_empleado: idEmpleado }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Error al iniciar sesión');
+  }
+  return res.json();
+}
+
+/* =========================================================================
+ * ENDPOINTS DE LOGÍSTICA Y TRANSPORTE
+ * ========================================================================= */
+
 export async function fetchPedidosPendientes(): Promise<OTPicking[]> {
-  const res = await fetch(`${API_BASE}/pedidos-pendientes`);
+  const res = await fetch(`${API_BASE}/pedidos-pendientes`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Error al obtener órdenes de trabajo pendientes');
@@ -25,7 +97,9 @@ export async function fetchPedidosPendientes(): Promise<OTPicking[]> {
 }
 
 export async function fetchOtById(id: string): Promise<OTPicking> {
-  const res = await fetch(`${API_BASE}/ots/${id}`);
+  const res = await fetch(`${API_BASE}/ots/${id}`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || `Error al obtener detalle de OT ${id}`);
@@ -34,7 +108,9 @@ export async function fetchOtById(id: string): Promise<OTPicking> {
 }
 
 export async function fetchTransportistas(): Promise<Transportista[]> {
-  const res = await fetch(`${API_BASE}/transportistas`);
+  const res = await fetch(`${API_BASE}/transportistas`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Error al obtener transportistas');
@@ -50,7 +126,10 @@ export async function cotizarEnvio(payload: {
 }): Promise<CotizacionResponse> {
   const res = await fetch(`${API_BASE}/cotizar`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -69,7 +148,10 @@ export async function emitirGuiaDespacho(payload: {
 }): Promise<{ mensaje: string; guia: GuiaDespacho; inventario: ConfirmacionStock }> {
   const res = await fetch(`${API_BASE}/guias`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(payload),
   });
 
@@ -93,7 +175,10 @@ export async function reintentarStockGuia(
 ): Promise<{ mensaje: string; guia: GuiaDespacho; inventario: ConfirmacionStock }> {
   const res = await fetch(`${API_BASE}/guias/${encodeURIComponent(guiaId)}/reintentar-stock`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({ usuario_responsable }),
   });
   const data = await res.json().catch(() => ({}));
@@ -118,7 +203,9 @@ export async function fetchTracking(filtros: {
   const query = params.toString();
   const url = query ? `${API_BASE}/tracking?${query}` : `${API_BASE}/tracking`;
 
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Error al consultar tracking');
@@ -136,7 +223,10 @@ export async function registrarEventoTracking(
 ): Promise<{ mensaje: string; nuevoEvento: any; guia: GuiaDespacho }> {
   const res = await fetch(`${API_BASE}/tracking/${guiaId}/evento`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(payload),
   });
 
@@ -150,7 +240,9 @@ export async function registrarEventoTracking(
 }
 
 export async function fetchComprasPendientes(): Promise<OrdenCompra[]> {
-  const res = await fetch(`${API_BASE}/compras-pendientes`);
+  const res = await fetch(`${API_BASE}/compras-pendientes`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Error al obtener órdenes de compra pendientes');
@@ -159,7 +251,9 @@ export async function fetchComprasPendientes(): Promise<OrdenCompra[]> {
 }
 
 export async function fetchCompraById(id: number): Promise<OrdenCompra> {
-  const res = await fetch(`${API_BASE}/compras/${id}`);
+  const res = await fetch(`${API_BASE}/compras/${id}`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || `Error al obtener orden de compra #${id}`);
@@ -172,7 +266,10 @@ export async function registrarRecepcionMuelle(
 ): Promise<{ mensaje: string; recepcion: RecepcionRegistro; resumen: any; inventario: IngresoInventario }> {
   const res = await fetch(`${API_BASE}/recepciones`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(payload),
   });
 
@@ -189,7 +286,9 @@ export async function registrarRecepcionMuelle(
 
 /** Empleados para elegir al receptor en muelle */
 export async function fetchEmpleados(): Promise<Empleado[]> {
-  const res = await fetch(`${API_BASE}/empleados`);
+  const res = await fetch(`${API_BASE}/empleados`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Error al obtener empleados');
@@ -199,7 +298,9 @@ export async function fetchEmpleados(): Promise<Empleado[]> {
 
 /** Bodegas de Inventario donde ingresa la mercadería recibida */
 export async function fetchBodegas(): Promise<Bodega[]> {
-  const res = await fetch(`${API_BASE}/bodegas`);
+  const res = await fetch(`${API_BASE}/bodegas`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Error al obtener bodegas de Inventario');
@@ -208,11 +309,12 @@ export async function fetchBodegas(): Promise<Bodega[]> {
 }
 
 export async function fetchHistorialRecepciones(): Promise<RecepcionRegistro[]> {
-  const res = await fetch(`${API_BASE}/recepciones`);
+  const res = await fetch(`${API_BASE}/recepciones`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Error al consultar historial de recepciones');
   }
   return res.json();
 }
-

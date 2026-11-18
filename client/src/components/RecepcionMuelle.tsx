@@ -22,6 +22,7 @@ import {
   Empleado,
   Bodega,
 } from '../types';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchComprasPendientes,
   fetchCompraById,
@@ -50,12 +51,26 @@ export const RecepcionMuelle: React.FC = () => {
   const [guiaProveedor, setGuiaProveedor] = useState<string>('');
   const [observacionGeneral, setObservacionGeneral] = useState<string>('');
 
+  const { user } = useAuth();
+
   // Receptor (RRHH) y bodegas de ingreso (Inventario)
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [receptorId, setReceptorId] = useState<number | null>(null);
   const [bodegas, setBodegas] = useState<Bodega[]>([]);
   const [errorBodegas, setErrorBodegas] = useState<string | null>(null);
   const receptor = empleados.find((e) => e.id_empleado === receptorId) || null;
+
+  // Auto-seleccionar el empleado activo si coincide con el usuario autenticado
+  useEffect(() => {
+    if (empleados.length > 0) {
+      const match = empleados.find((e) => e.id_empleado === user.id_empleado);
+      if (match) {
+        setReceptorId(match.id_empleado);
+      } else if (!receptorId) {
+        setReceptorId(empleados[0].id_empleado);
+      }
+    }
+  }, [user, empleados]);
 
   // Estados de confirmación y vista
   const [registrando, setRegistrando] = useState<boolean>(false);

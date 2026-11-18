@@ -23,6 +23,7 @@ import {
   ConfirmacionStock,
   ESTADOS_STOCK,
 } from '../types';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchPedidosPendientes,
   fetchOtById,
@@ -42,6 +43,8 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   onGuiaEmitida,
   onGoToTracking,
 }) => {
+  const { user } = useAuth();
+
   // Estados para datos maestros
   const [ots, setOts] = useState<OTPicking[]>([]);
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
@@ -244,7 +247,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
         transportista_id: transportistaId,
         servicio_id: servicioId,
         bultos: [dimensiones],
-        usuario_responsable: 'M. Pizarro (Coordinador de Despacho)',
+        usuario_responsable: `${user.nombre} (${user.rol_nombre})`,
       });
 
       setGuiaEmitidaReciente(res.guia);
