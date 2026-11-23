@@ -27,6 +27,7 @@ import {
   reintentarStockGuia,
   prepararDerivacionPostventa,
   type IncidenciaPostventa,
+  type PayloadPostventa,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 
@@ -57,6 +58,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   const [guardandoEvento, setGuardandoEvento] = useState<boolean>(false);
   const [mensajeExitoEvento, setMensajeExitoEvento] = useState<string | null>(null);
   const [incidenciaPostventa, setIncidenciaPostventa] = useState<IncidenciaPostventa | null>(null);
+  const [payloadPostventa, setPayloadPostventa] = useState<PayloadPostventa | null>(null);
   const [preparandoDerivacion, setPreparandoDerivacion] = useState(false);
   const [errorDerivacion, setErrorDerivacion] = useState<string | null>(null);
 
@@ -69,6 +71,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   useEffect(() => {
     setMensajeStock(null);
     setIncidenciaPostventa(null);
+    setPayloadPostventa(null);
     setErrorDerivacion(null);
   }, [guiaSeleccionada?.id]);
 
@@ -77,7 +80,9 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
     try {
       setPreparandoDerivacion(true);
       setErrorDerivacion(null);
-      setIncidenciaPostventa(await prepararDerivacionPostventa(guiaSeleccionada.id));
+      const derivacion = await prepararDerivacionPostventa(guiaSeleccionada.id);
+      setIncidenciaPostventa(derivacion.incidencia);
+      setPayloadPostventa(derivacion.payload);
     } catch (err: any) {
       setErrorDerivacion(err.message || 'No se pudo preparar la derivación');
     } finally {
@@ -497,6 +502,16 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                     {preparandoDerivacion ? 'Preparando...' : 'Preparar derivación'}
                   </button>
                   {incidenciaPostventa && <p className="text-red-900">Incidencia #{incidenciaPostventa.id} registrada. Caso de Postventa: {incidenciaPostventa.id_caso_postventa ?? 'pendiente de vincular'}.</p>}
+                  {payloadPostventa && (
+                    <details className="text-red-900">
+                      <summary className="cursor-pointer font-semibold">Ver JSON acordado con Postventa</summary>
+                      <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-white p-2 text-[11px] whitespace-pre-wrap">{JSON.stringify(payloadPostventa, null, 2)}</pre>
+                      <button type="button" className="mt-2 rounded-lg border border-red-300 bg-white px-3 py-1.5 font-semibold"
+                        onClick={() => navigator.clipboard.writeText(JSON.stringify(payloadPostventa, null, 2))}>
+                        Copiar JSON
+                      </button>
+                    </details>
+                  )}
                   {errorDerivacion && <p className="text-red-900">{errorDerivacion}</p>}
                 </div>
               )}

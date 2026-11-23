@@ -147,17 +147,25 @@ Logística consulta y confirma stock en la API REST de Inventario (`server/src/i
 Una guía con estado `Entrega Fallida` puede generar una incidencia local mediante
 `POST /api/logistica/tracking/:id_guia/derivar-postventa`. La respuesta contiene
 `incidencia` con su `id`, `guia_id`, `evento_tracking_id`, `descripcion` e
-`id_caso_postventa` (inicialmente `null`). Repetir la solicitud para el mismo
-evento devuelve la misma incidencia. Después de que Postventa cree o encuentre
+`id_caso_postventa` (inicialmente `null`), más `payload`, el JSON acordado para
+`POST /postventa/integraciones/logistica/incidencias`. Este incluye `id_incidencia`,
+`id_evento_tracking`, `id_guia`, `numero_seguimiento`, `tipo`, `motivo`,
+`fecha_evento`, `fecha_incidencia`, `id_pedido` y `lineas_despachadas`.
+Cada línea despachada lleva `id_linea_ot`, `id_producto`, `sku` y
+`cantidad_despachada` (`cant_recolectada`); se omiten las de cantidad cero y
+se mantienen separadas las líneas con el mismo producto. `id_linea_ot` es
+propio de Logística, no el identificador de línea de Ventas. Repetir la
+solicitud para el mismo evento devuelve la misma incidencia. Después de que Postventa cree o encuentre
 un caso, `POST /api/logistica/incidencias/:id/caso-postventa` con
 `{"id_caso_postventa": 123}` guarda el vínculo; repetir el mismo ID es seguro y
 uno diferente responde 409. Aplicar `npm run db:ddl` y `npm run db:generate`
 antes de usar estos endpoints con PostgreSQL.
 
-La derivación es explícita porque la regla para derivar una entrega fallida
-todavía debe acordarse entre equipos. Estos endpoints preparan la incidencia y
-el vínculo local; aún no envían una solicitud HTTP a Postventa ni generan una
-orden de retiro o re-despacho.
+La derivación es manual desde el primer intento fallido. El JSON se puede
+consultar y copiar desde Tracking para pruebas ficticias. Estos endpoints
+preparan la incidencia y el vínculo local; aún no envían una solicitud HTTP a
+Postventa ni generan una orden de retiro o re-despacho. La URL y autenticación
+entre servicios siguen pendientes de acuerdo entre equipos.
 
 | Método | Endpoint | Descripción |
 |---|---|---|

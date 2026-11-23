@@ -24,11 +24,29 @@ export interface IncidenciaPostventa {
   id_caso_postventa: number | null;
 }
 
-export async function prepararDerivacionPostventa(guiaId: string): Promise<IncidenciaPostventa> {
+export interface PayloadPostventa {
+  id_incidencia: number;
+  id_evento_tracking: number;
+  id_guia: string;
+  numero_seguimiento: string;
+  tipo: string;
+  motivo: string;
+  fecha_evento: string;
+  fecha_incidencia: string;
+  id_pedido: number;
+  lineas_despachadas: Array<{
+    id_linea_ot: number;
+    id_producto: number;
+    sku: string;
+    cantidad_despachada: number;
+  }>;
+}
+
+export async function prepararDerivacionPostventa(guiaId: string): Promise<{ incidencia: IncidenciaPostventa; payload: PayloadPostventa }> {
   const res = await fetch(`${API_BASE}/tracking/${encodeURIComponent(guiaId)}/derivar-postventa`, { method: 'POST' });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'No se pudo preparar la derivación');
-  return data.incidencia;
+  return data;
 }
 
 export async function fetchPedidosPendientes(): Promise<OTPicking[]> {
