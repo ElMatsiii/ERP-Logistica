@@ -661,6 +661,36 @@ export class LogisticaService {
     return this.repository.getTrackingGuias(filtros);
   }
 
+  /** Prepara la derivación local. El envío a Postventa requiere un contrato API acordado. */
+  async derivarEntregaFallida(guiaId: string) {
+    const guia = await this.repository.getGuiaById(guiaId);
+    if (!guia) throw new ValidationError(`La guía ${guiaId} no existe`, 404);
+    if (guia.estado_actual !== 'Entrega Fallida') {
+      throw new ValidationError('Solo se puede derivar una guía con estado Entrega Fallida', 409);
+    }
+    const eventos = (guia.eventos ?? []) as Array<{ id: number; estado: string; observacion: string }>;
+    const evento = [...eventos].reverse().find((item) => item.estado === 'Entrega Fallida');
+    if (!evento) throw new ValidationError('La guía no tiene un evento de entrega fallida', 409);
+    return this.repository.derivarEntregaFallida(guiaId, evento.id, evento.observacion);
+  }
+
+  async vincularCasoPostventa(incidenciaId: number, casoId: number) {
+    if (!Number.isSafeInteger(incidenciaId) || incidenciaId <= 0 ||
+        !Number.isSafeInteger(casoId) || casoId <= 0) {
+      throw new ValidationError('Los identificadores de incidencia y caso deben ser enteros positivos', 400);
+    }
+    const incidencia = await this.repository.getIncidencia(incidenciaId);
+    if (!incidencia) throw new ValidationError(`La incidencia ${incidenciaId} no existe`, 404);
+    if (incidencia.id_caso_postventa !== null && incidencia.id_caso_postventa !== casoId) {
+      throw new ValidationError('La incidencia ya está vinculada a otro caso de Postventa', 409);
+    }
+    const vinculada = await this.repository.vincularCasoPostventa(incidenciaId, casoId);
+    if (vinculada?.id_caso_postventa !== casoId) {
+      throw new ValidationError('La incidencia ya está vinculada a otro caso de Postventa', 409);
+    }
+    return vinculada;
+  }
+
   /**
    * Inserta un nuevo evento append-only en la bitácora y actualiza el estado_actual denormalizado.
    */

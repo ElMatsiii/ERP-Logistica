@@ -91,6 +91,7 @@ const EMPLEADOS_FALLBACK = [
 export class LogisticaRepository {
   private fallbackOts = [...mockOts];
   private fallbackGuias = [...mockGuias];
+  private fallbackIncidencias: Array<{ id: number; guia_id: string; tipo: string; fecha_registro: Date; descripcion: string; evento_tracking_id: number; id_caso_postventa: number | null; resuelta: boolean }> = [];
   private fallbackCompras = [...mockComprasOc];
   private fallbackRecepciones = [...mockRecepciones];
 
@@ -287,6 +288,55 @@ export class LogisticaRepository {
     } catch (err) {
       if (!esErrorDeConexion(err)) throw err;
       return this.fallbackGuias.find((g) => g.id === id) || null;
+    }
+  }
+
+  /** Una derivación por evento fallido, incluso si se repite la petición HTTP. */
+  async derivarEntregaFallida(guiaId: string, eventoId: number, descripcion: string) {
+    try {
+      const existente = await prisma.log_incidencia.findUnique({ where: { evento_tracking_id: eventoId } });
+      if (existente) return existente;
+      return await prisma.log_incidencia.create({ data: {
+        guia_id: guiaId, evento_tracking_id: eventoId,
+        tipo: 'ENTREGA_FALLIDA', descripcion,
+      } });
+    } catch (err) {
+      if ((err as { code?: string }).code === 'P2002') {
+        const existente = await prisma.log_incidencia.findUnique({ where: { evento_tracking_id: eventoId } });
+        if (existente) return existente;
+      }
+      if (!esErrorDeConexion(err)) throw err;
+      let incidencia = this.fallbackIncidencias.find((item) => item.evento_tracking_id === eventoId);
+      if (!incidencia) {
+        incidencia = { id: this.fallbackIncidencias.length + 1, guia_id: guiaId,
+          tipo: 'ENTREGA_FALLIDA', fecha_registro: new Date(), descripcion,
+          evento_tracking_id: eventoId, id_caso_postventa: null, resuelta: false };
+        this.fallbackIncidencias.push(incidencia);
+      }
+      return incidencia;
+    }
+  }
+
+  async getIncidencia(id: number) {
+    try {
+      return await prisma.log_incidencia.findUnique({ where: { id } });
+    } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
+      return this.fallbackIncidencias.find((item) => item.id === id) ?? null;
+    }
+  }
+
+  async vincularCasoPostventa(id: number, casoId: number) {
+    try {
+      await prisma.log_incidencia.updateMany({
+        where: { id, id_caso_postventa: null }, data: { id_caso_postventa: casoId },
+      });
+      return await prisma.log_incidencia.findUnique({ where: { id } });
+    } catch (err) {
+      if (!esErrorDeConexion(err)) throw err;
+      const incidencia = this.fallbackIncidencias.find((item) => item.id === id);
+      if (incidencia && incidencia.id_caso_postventa === null) incidencia.id_caso_postventa = casoId;
+      return incidencia ?? null;
     }
   }
 

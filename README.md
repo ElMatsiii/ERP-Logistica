@@ -142,6 +142,23 @@ Logística consulta y confirma stock en la API REST de Inventario (`server/src/i
 
 ## Endpoints de la API REST (`/api/logistica`)
 
+### Preparación de integración con Postventa
+
+Una guía con estado `Entrega Fallida` puede generar una incidencia local mediante
+`POST /api/logistica/tracking/:id_guia/derivar-postventa`. La respuesta contiene
+`incidencia` con su `id`, `guia_id`, `evento_tracking_id`, `descripcion` e
+`id_caso_postventa` (inicialmente `null`). Repetir la solicitud para el mismo
+evento devuelve la misma incidencia. Después de que Postventa cree o encuentre
+un caso, `POST /api/logistica/incidencias/:id/caso-postventa` con
+`{"id_caso_postventa": 123}` guarda el vínculo; repetir el mismo ID es seguro y
+uno diferente responde 409. Aplicar `npm run db:ddl` y `npm run db:generate`
+antes de usar estos endpoints con PostgreSQL.
+
+La derivación es explícita porque la regla para derivar una entrega fallida
+todavía debe acordarse entre equipos. Estos endpoints preparan la incidencia y
+el vínculo local; aún no envían una solicitud HTTP a Postventa ni generan una
+orden de retiro o re-despacho.
+
 | Método | Endpoint | Descripción |
 |---|---|---|
 | `GET` | `/api/logistica/pedidos-pendientes` | Lista órdenes de trabajo y estado de picking |

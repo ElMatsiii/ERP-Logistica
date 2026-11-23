@@ -25,6 +25,8 @@ import {
   fetchTransportistas,
   registrarEventoTracking,
   reintentarStockGuia,
+  prepararDerivacionPostventa,
+  type IncidenciaPostventa,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 
@@ -54,6 +56,9 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   const [usuarioResponsable, setUsuarioResponsable] = useState<string>('M. Pizarro');
   const [guardandoEvento, setGuardandoEvento] = useState<boolean>(false);
   const [mensajeExitoEvento, setMensajeExitoEvento] = useState<string | null>(null);
+  const [incidenciaPostventa, setIncidenciaPostventa] = useState<IncidenciaPostventa | null>(null);
+  const [preparandoDerivacion, setPreparandoDerivacion] = useState(false);
+  const [errorDerivacion, setErrorDerivacion] = useState<string | null>(null);
 
   // Reintento de la confirmación de stock con Inventario
   const [reintentandoStock, setReintentandoStock] = useState<boolean>(false);
@@ -63,7 +68,22 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
 
   useEffect(() => {
     setMensajeStock(null);
+    setIncidenciaPostventa(null);
+    setErrorDerivacion(null);
   }, [guiaSeleccionada?.id]);
+
+  const handlePrepararDerivacion = async () => {
+    if (!guiaSeleccionada) return;
+    try {
+      setPreparandoDerivacion(true);
+      setErrorDerivacion(null);
+      setIncidenciaPostventa(await prepararDerivacionPostventa(guiaSeleccionada.id));
+    } catch (err: any) {
+      setErrorDerivacion(err.message || 'No se pudo preparar la derivación');
+    } finally {
+      setPreparandoDerivacion(false);
+    }
+  };
 
   // Cargar datos de tracking
   const cargarTracking = async () => {
@@ -467,6 +487,19 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                   </p>
                 </div>
               </div>
+
+              {guiaSeleccionada.estado_actual === 'Entrega Fallida' && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs space-y-2">
+                  <p className="font-bold text-red-900">Incidencia de entrega fallida</p>
+                  <p className="text-red-800">Prepara el registro para vincularlo con un caso de Postventa.</p>
+                  <button type="button" onClick={handlePrepararDerivacion} disabled={preparandoDerivacion}
+                    className="px-3 py-2 rounded-lg bg-red-700 text-white font-bold disabled:opacity-60">
+                    {preparandoDerivacion ? 'Preparando...' : 'Preparar derivación'}
+                  </button>
+                  {incidenciaPostventa && <p className="text-red-900">Incidencia #{incidenciaPostventa.id} registrada. Caso de Postventa: {incidenciaPostventa.id_caso_postventa ?? 'pendiente de vincular'}.</p>}
+                  {errorDerivacion && <p className="text-red-900">{errorDerivacion}</p>}
+                </div>
+              )}
 
               {/* LÍNEA DE TIEMPO VERTICAL (log_evento_tracking) */}
               <div>

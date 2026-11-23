@@ -15,6 +15,22 @@ import {
 
 const API_BASE = '/api/logistica';
 
+export interface IncidenciaPostventa {
+  id: number;
+  guia_id: string;
+  tipo: string;
+  descripcion: string;
+  evento_tracking_id: number | null;
+  id_caso_postventa: number | null;
+}
+
+export async function prepararDerivacionPostventa(guiaId: string): Promise<IncidenciaPostventa> {
+  const res = await fetch(`${API_BASE}/tracking/${encodeURIComponent(guiaId)}/derivar-postventa`, { method: 'POST' });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'No se pudo preparar la derivación');
+  return data.incidencia;
+}
+
 export async function fetchPedidosPendientes(): Promise<OTPicking[]> {
   const res = await fetch(`${API_BASE}/pedidos-pendientes`);
   if (!res.ok) {

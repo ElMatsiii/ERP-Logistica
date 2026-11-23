@@ -125,6 +125,26 @@ export class LogisticaController {
     }
   };
 
+  derivarEntregaFallida = async (req: Request, res: Response) => {
+    try {
+      const incidencia = await this.service.derivarEntregaFallida(String(req.params.id_guia));
+      res.json({ incidencia });
+    } catch (error: any) {
+      if (error instanceof ValidationError) return res.status(error.statusCode).json({ error: error.message });
+      res.status(500).json({ error: 'Error al derivar la entrega fallida' });
+    }
+  };
+
+  vincularCasoPostventa = async (req: Request, res: Response) => {
+    try {
+      const incidencia = await this.service.vincularCasoPostventa(Number(req.params.id), req.body?.id_caso_postventa);
+      res.json({ incidencia });
+    } catch (error: any) {
+      if (error instanceof ValidationError) return res.status(error.statusCode).json({ error: error.message });
+      res.status(500).json({ error: 'Error al vincular el caso de Postventa' });
+    }
+  };
+
   getComprasPendientes = async (req: Request, res: Response) => {
     try {
       const compras = await this.service.getComprasPendientes();

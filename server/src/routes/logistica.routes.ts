@@ -28,6 +28,8 @@ export function createLogisticaRouter(controller?: LogisticaController): Router 
 
   // 5. Inserción de nuevo evento cronológico (append-only) y actualización de estado
   router.post('/tracking/:id_guia/evento', ctrl.registrarEventoTracking);
+  router.post('/tracking/:id_guia/derivar-postventa', ctrl.derivarEntregaFallida);
+  router.post('/incidencias/:id/caso-postventa', ctrl.vincularCasoPostventa);
 
   // 6. Órdenes de compra pendientes para recepción en muelle (HU-06)
   router.get('/compras-pendientes', ctrl.getComprasPendientes);
