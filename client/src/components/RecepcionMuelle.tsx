@@ -22,6 +22,7 @@ import {
   Empleado,
   Bodega,
 } from '../types';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchComprasPendientes,
   fetchCompraById,
@@ -29,6 +30,7 @@ import {
   fetchHistorialRecepciones,
   fetchEmpleados,
   fetchBodegas,
+  invalidarCache,
 } from '../api/logisticaApi';
 
 type ConteoLinea = { recibida: number; danada: number; motivo: string; bodega: number | null };
@@ -50,12 +52,26 @@ export const RecepcionMuelle: React.FC = () => {
   const [guiaProveedor, setGuiaProveedor] = useState<string>('');
   const [observacionGeneral, setObservacionGeneral] = useState<string>('');
 
+  const { user } = useAuth();
+
   // Receptor (RRHH) y bodegas de ingreso (Inventario)
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [receptorId, setReceptorId] = useState<number | null>(null);
   const [bodegas, setBodegas] = useState<Bodega[]>([]);
   const [errorBodegas, setErrorBodegas] = useState<string | null>(null);
   const receptor = empleados.find((e) => e.id_empleado === receptorId) || null;
+
+  // Auto-seleccionar el empleado activo si coincide con el usuario autenticado
+  useEffect(() => {
+    if (empleados.length > 0) {
+      const match = empleados.find((e) => e.id_empleado === user.id_empleado);
+      if (match) {
+        setReceptorId(match.id_empleado);
+      } else if (!receptorId) {
+        setReceptorId(empleados[0].id_empleado);
+      }
+    }
+  }, [user, empleados]);
 
   // Estados de confirmación y vista
   const [registrando, setRegistrando] = useState<boolean>(false);
@@ -64,13 +80,14 @@ export const RecepcionMuelle: React.FC = () => {
   const [vistaActiva, setVistaActiva] = useState<'formulario' | 'historial'>('formulario');
 
   // Cargar órdenes de compra y el historial
-  const cargarDatos = async () => {
+  const cargarDatos = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setErrorCarga(null);
       const [listaCompras, listaHistorial] = await Promise.all([
-        fetchComprasPendientes(),
-        fetchHistorialRecepciones(),
+        fetchComprasPendientes(f),
+        fetchHistorialRecepciones(f),
       ]);
       setCompras(listaCompras);
       setHistorial(listaHistorial);
@@ -89,14 +106,15 @@ export const RecepcionMuelle: React.FC = () => {
   };
 
   // Empleados y bodegas se cargan aparte: si Inventario no responde, el resto de la pantalla funciona igual
-  const cargarAuxiliares = async () => {
+  const cargarAuxiliares = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
-      setEmpleados(await fetchEmpleados());
+      setEmpleados(await fetchEmpleados(f));
     } catch (err: any) {
       console.error('Error al cargar empleados:', err);
     }
     try {
-      setBodegas(await fetchBodegas());
+      setBodegas(await fetchBodegas(f));
       setErrorBodegas(null);
     } catch (err: any) {
       setErrorBodegas(err.message || 'No se pudieron cargar las bodegas de Inventario.');
@@ -257,21 +275,21 @@ export const RecepcionMuelle: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
       {/* Banner Principal LEGO */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <div className="bg-gradient-to-r from-[#e52521] via-red-600 to-amber-500 p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-[#e52521] p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center">
+            <div className="flex items-center space-x-2 mb-1.5">
+              <span className="bg-red-700/80 text-white text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center border border-red-500/40">
                 <Inbox className="w-3.5 h-3.5 mr-1" />
                 Flujo de Entrada (HU-06)
               </span>
-              <span className="bg-amber-400 text-slate-900 text-xs font-bold px-2 py-0.5 rounded">
+              <span className="bg-[#ffcf00] text-slate-900 text-xs font-bold px-2 py-0.5 rounded shadow-xs">
                 Compras → Logística → Inventario
               </span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white flex items-center">
               Recepción de Mercadería en Muelle de Descarga
             </h1>
-            <p className="text-red-100 text-sm mt-1 max-w-2xl">
+            <p className="text-red-100 text-sm mt-1 max-w-2xl leading-relaxed">
               Contrasta físicamente los sets LEGO arribados contra la Orden de Compra (OC). Clasifica cajas dañadas e registra en Inventario el <strong className="text-white">INGRESO</strong> de las unidades aptas, en la bodega indicada por línea.
             </p>
           </div>
@@ -282,7 +300,7 @@ export const RecepcionMuelle: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center space-x-1.5 ${
                 vistaActiva === 'formulario'
                   ? 'bg-white text-[#e52521] shadow-md'
-                  : 'bg-red-700/60 text-white hover:bg-red-700'
+                  : 'bg-red-700 text-white hover:bg-red-800 border border-red-500/40'
               }`}
             >
               <ClipboardList className="w-4 h-4" />
@@ -293,17 +311,21 @@ export const RecepcionMuelle: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center space-x-1.5 ${
                 vistaActiva === 'historial'
                   ? 'bg-white text-[#e52521] shadow-md'
-                  : 'bg-red-700/60 text-white hover:bg-red-700'
+                  : 'bg-red-700 text-white hover:bg-red-800 border border-red-500/40'
               }`}
             >
               <Clock className="w-4 h-4" />
               <span>Historial ({historial.length})</span>
             </button>
             <button
-              onClick={cargarDatos}
+              onClick={() => {
+                invalidarCache('compras');
+                invalidarCache('historial');
+                cargarDatos(true);
+              }}
               disabled={cargando}
               title="Refrescar datos"
-              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="p-2 rounded-lg bg-red-700 hover:bg-red-800 text-white border border-red-500/40 transition-colors"
             >
               <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
             </button>
@@ -377,7 +399,7 @@ export const RecepcionMuelle: React.FC = () => {
               onClick={() => setExitoRecepcion(null)}
               className="text-emerald-700 hover:text-emerald-900 text-sm font-semibold p-1"
             >
-              ✕ Cerrar
+              Cerrar
             </button>
           </div>
         </div>
@@ -482,7 +504,7 @@ export const RecepcionMuelle: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={cargarAuxiliares}
+                    onClick={() => cargarAuxiliares(true)}
                     className="font-bold text-amber-800 hover:underline whitespace-nowrap"
                   >
                     Reintentar
@@ -729,56 +751,63 @@ export const RecepcionMuelle: React.FC = () => {
             </div>
 
             {/* Panel 4: Resumen de Inventario y Botón de Confirmación */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl shadow-md p-6 text-white">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center">
-                <Sparkles className="w-4 h-4 mr-1.5" />
-                Resumen Transaccional de Entrada
-              </h3>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <span className="w-6 h-6 rounded-full bg-[#e52521] text-white flex items-center justify-center text-xs font-bold">
+                  4
+                </span>
+                <h2 className="text-base font-bold text-slate-900">
+                  Resumen Transaccional de Entrada
+                </h2>
+              </div>
 
-              <div className="space-y-2.5 py-3 border-y border-slate-700 text-xs">
-                <div className="flex justify-between text-slate-300">
-                  <span>Sets solicitados en OC:</span>
-                  <span className="font-bold text-white">{totalEsperado} un.</span>
+              <div className="space-y-2.5 py-3 border-y border-slate-100 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span className="font-medium">Sets solicitados en OC:</span>
+                  <span className="font-bold text-slate-900 font-mono">{totalEsperado} un.</span>
                 </div>
-                <div className="flex justify-between text-slate-300">
-                  <span>Sets efectivamente descargados:</span>
-                  <span className="font-bold text-white">{totalRecibido} un.</span>
+                <div className="flex justify-between text-slate-600">
+                  <span className="font-medium">Sets efectivamente descargados:</span>
+                  <span className="font-bold text-slate-900 font-mono">{totalRecibido} un.</span>
                 </div>
-                <div className="flex justify-between text-red-400">
-                  <span>Cajas dañadas (merma/rechazo):</span>
-                  <span className="font-bold">-{totalDanado} un.</span>
+                <div className="flex justify-between text-red-600">
+                  <span className="font-medium">Cajas dañadas (merma/rechazo):</span>
+                  <span className="font-bold font-mono">-{totalDanado} un.</span>
                 </div>
-                <div className="pt-2 border-t border-slate-700 flex justify-between items-baseline">
-                  <span className="font-bold text-emerald-400 text-sm">Ingreso a Inventario:</span>
-                  <span className="font-black text-2xl text-emerald-300">{totalAptoInventario} un.</span>
+                <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/80">
+                  <div>
+                    <span className="font-bold text-emerald-900 text-xs block">Ingreso a Inventario</span>
+                    <span className="text-[10px] text-emerald-700">Unidades conformes a bodega</span>
+                  </div>
+                  <span className="font-black text-2xl text-emerald-700 font-mono">{totalAptoInventario} un.</span>
                 </div>
               </div>
 
               {/* Mensaje de estado preliminar */}
-              <div className="mt-4 p-2.5 rounded-lg text-xs font-semibold flex items-center space-x-2 bg-slate-800/80 border border-slate-700">
+              <div className="mt-4">
                 {tieneErroresValidacion ? (
-                  <>
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="text-red-300">{mensajeErrorValidacion}</span>
-                  </>
+                  <div className="p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 bg-red-50 border border-red-200 text-red-800">
+                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    <span>{mensajeErrorValidacion}</span>
+                  </div>
                 ) : esConforme100 ? (
-                  <>
-                    <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <span className="text-emerald-300">Recepción 100% Conforme (Sin Daños)</span>
-                  </>
+                  <div className="p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-800">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Recepción 100% Conforme (Sin Daños)</span>
+                  </div>
                 ) : (
-                  <>
-                    <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                    <span className="text-amber-300">
+                  <div className="p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 bg-amber-50 border border-amber-200 text-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span>
                       {totalDanado > 0 ? `Recepción con ${totalDanado} cajas dañadas` : 'Recepción Parcial con faltante'}
                     </span>
-                  </>
+                  </div>
                 )}
               </div>
 
               {/* Mensaje de error de backend si hubo */}
               {errorRecepcion && (
-                <div className="mt-3 p-3 rounded-lg bg-red-900/80 border border-red-500 text-xs text-red-200">
+                <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800">
                   {errorRecepcion}
                 </div>
               )}
@@ -788,7 +817,7 @@ export const RecepcionMuelle: React.FC = () => {
                 type="button"
                 onClick={handleConfirmarRecepcion}
                 disabled={registrando || tieneErroresValidacion || totalRecibido <= 0 || !receptorId || !guiaProveedor.trim()}
-                className="mt-6 w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm tracking-wide text-white shadow-lg shadow-emerald-900/50 flex items-center justify-center space-x-2 transition-all transform active:scale-[0.98]"
+                className="mt-6 w-full py-3.5 px-4 rounded-xl bg-[#e52521] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed font-bold text-sm tracking-wide text-white shadow-md transition-all flex items-center justify-center space-x-2 hover:shadow-lg active:scale-[0.98]"
               >
                 {registrando ? (
                   <>
@@ -797,13 +826,13 @@ export const RecepcionMuelle: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <ArrowDownLeft className="w-5 h-5 text-emerald-200" />
+                    <ArrowDownLeft className="w-5 h-5 text-white" />
                     <span>Confirmar Recepción e Ingresar a Inventario</span>
                   </>
                 )}
               </button>
 
-              <p className="text-[10px] text-slate-400 text-center mt-2">
+              <p className="text-[11px] text-slate-500 text-center mt-2.5">
                 Inventario registra primero el ingreso de las unidades aptas; si no responde, no se guarda nada y se puede reintentar.
               </p>
             </div>

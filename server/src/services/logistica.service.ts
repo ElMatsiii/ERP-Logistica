@@ -297,12 +297,12 @@ export class LogisticaService {
    * Cotiza el envío verificando cobertura y cubicación en tiempo real.
    */
   async cotizarEnvio(input: CotizarRequest) {
-    const ot = await this.repository.getOtById(input.ot_id);
-    if (!ot) {
+    const infoOt = await this.repository.getComunaIdDeOt(input.ot_id);
+    if (!infoOt.existe) {
       throw new ValidationError(`La OT ${input.ot_id} no existe`, 404);
     }
 
-    const comunaId = ot.direccion?.comuna_id;
+    const comunaId = infoOt.comuna_id;
     if (!comunaId) {
       throw new ValidationError('La OT no posee una dirección o comuna asociada.', 422);
     }
@@ -353,7 +353,7 @@ export class LogisticaService {
       cubicacion,
       tiene_cobertura: tieneCobertura,
       costo_estimado: costoEstimado,
-      comuna_destino: ot.direccion?.comuna?.nombre,
+      comuna_destino: infoOt.comuna_nombre || undefined,
       transportista_nombre: transportista.nombre,
     };
   }

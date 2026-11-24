@@ -34,10 +34,10 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95">
         
-        {/* Header con gradiente LEGO */}
+        {/* Header con colores oficiales */}
         <div
-          className={`bg-gradient-to-r ${
-            stockConfirmado ? 'from-emerald-600 to-teal-600' : 'from-amber-500 to-orange-600'
+          className={`${
+            stockConfirmado ? 'bg-emerald-600' : 'bg-[#e52521]'
           } px-6 py-5 text-white flex items-center justify-between`}
         >
           <div className="flex items-center space-x-3">

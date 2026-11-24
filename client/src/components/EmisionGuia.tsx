@@ -23,12 +23,14 @@ import {
   ConfirmacionStock,
   ESTADOS_STOCK,
 } from '../types';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchPedidosPendientes,
   fetchOtById,
   fetchTransportistas,
   cotizarEnvio,
   emitirGuiaDespacho,
+  invalidarCache,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 import { ModalConfirmacion } from './ModalConfirmacion';
@@ -42,6 +44,8 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   onGuiaEmitida,
   onGoToTracking,
 }) => {
+  const { user } = useAuth();
+
   // Estados para datos maestros
   const [ots, setOts] = useState<OTPicking[]>([]);
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
@@ -69,6 +73,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   const [tarifaEstimada, setTarifaEstimada] = useState<number>(0);
   const [tieneCobertura, setTieneCobertura] = useState<boolean>(true);
   const [comunaDestino, setComunaDestino] = useState<string>('');
+  const [cotizando, setCotizando] = useState<boolean>(false);
 
   // Estados de emisión
   const [emitirCargando, setEmitirCargando] = useState<boolean>(false);
@@ -78,13 +83,14 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
 
   // Cargar lista inicial de OTs y Transportistas
-  const cargarDatos = async () => {
+  const cargarDatos = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setErrorCarga(null);
       const [listaOts, listaTransp] = await Promise.all([
-        fetchPedidosPendientes(),
-        fetchTransportistas(),
+        fetchPedidosPendientes(f),
+        fetchTransportistas(f),
       ]);
       setOts(listaOts);
       setTransportistas(listaTransp);
@@ -166,7 +172,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
     }
   }, [transportistaId, transportistas]);
 
-  // Cálculo en tiempo real de Cubicacion (Largo * Alto * Ancho / Factor) y Cotización
+  // Cálculo en tiempo real de Cubicación (Largo * Alto * Ancho / Factor) y Cotización
   useEffect(() => {
     const largo = Number(dimensiones.largo_cm) || 0;
     const alto = Number(dimensiones.alto_cm) || 0;
@@ -180,22 +186,37 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
     setPesoVolumetrico(vol);
     setPesoCobrado(cobrado);
 
-    // Cotización remota si la OT está disponible
+    // Estimación inmediata local
+    setTarifaEstimada((prev) => (prev > 0 ? prev : 4500 + Math.max(0, Math.ceil(cobrado - 2) * 1100)));
+
+    // Cotización remota con debounce (150ms) si los datos mínimos están presentes
     if (otSeleccionadaId && transportistaId && servicioId && largo > 0 && alto > 0 && ancho > 0 && real > 0) {
-      cotizarEnvio({
-        ot_id: otSeleccionadaId,
-        transportista_id: transportistaId,
-        servicio_id: servicioId,
-        bultos: [dimensiones],
-      })
-        .then((res) => {
-          setTieneCobertura(res.tiene_cobertura);
-          setTarifaEstimada(res.costo_estimado);
+      setCotizando(true);
+      const timer = setTimeout(() => {
+        cotizarEnvio({
+          ot_id: otSeleccionadaId,
+          transportista_id: transportistaId,
+          servicio_id: servicioId,
+          bultos: [dimensiones],
         })
-        .catch(() => {
-          // Si falla cotización remota, estimar localmente
-          setTarifaEstimada(4500 + Math.max(0, Math.ceil(cobrado - 2) * 1100));
-        });
+          .then((res) => {
+            setTieneCobertura(res.tiene_cobertura);
+            setTarifaEstimada(res.costo_estimado);
+          })
+          .catch(() => {
+            // Si falla cotización remota, estimar localmente
+            setTarifaEstimada(4500 + Math.max(0, Math.ceil(cobrado - 2) * 1100));
+          })
+          .finally(() => {
+            setCotizando(false);
+          });
+      }, 150);
+
+      return () => {
+        clearTimeout(timer);
+      };
+    } else {
+      setCotizando(false);
     }
   }, [dimensiones, factorVolumetrico, otSeleccionadaId, transportistaId, servicioId]);
 
@@ -244,7 +265,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
         transportista_id: transportistaId,
         servicio_id: servicioId,
         bultos: [dimensiones],
-        usuario_responsable: 'M. Pizarro (Coordinador de Despacho)',
+        usuario_responsable: `${user.nombre} (${user.rol_nombre})`,
       });
 
       setGuiaEmitidaReciente(res.guia);
@@ -292,7 +313,10 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
         </div>
 
         <button
-          onClick={cargarDatos}
+          onClick={() => {
+            invalidarCache();
+            cargarDatos(true);
+          }}
           disabled={cargando}
           className="self-start md:self-auto inline-flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm transition-all"
         >
@@ -318,15 +342,13 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
            ======================================================== */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-red-50 text-[#e52521] flex items-center justify-center font-bold">
+            <div className="flex items-center space-x-2">
+              <span className="w-6 h-6 rounded-full bg-[#e52521] text-white flex items-center justify-center text-xs font-bold">
                 1
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  Orden de Trabajo de Picking y Cliente
-                </h2>
-              </div>
+              </span>
+              <h2 className="text-base font-bold text-slate-900">
+                Orden de Trabajo de Picking y Cliente
+              </h2>
             </div>
 
             {otActual && <StatusBadge status={otActual.estado} type="ot" />}
@@ -496,15 +518,13 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             SECCIÓN 2: DETALLE DEL BULTO Y CUBICACIÓN INTERACTIVA
            ======================================================== */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
-          <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 mb-6">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#006cb7] flex items-center justify-center font-bold">
+          <div className="flex items-center space-x-2 pb-4 border-b border-slate-100 mb-6">
+            <span className="w-6 h-6 rounded-full bg-[#e52521] text-white flex items-center justify-center text-xs font-bold">
               2
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Detalle del Bulto y Cubicación en Tiempo Real
-              </h2>
-            </div>
+            </span>
+            <h2 className="text-base font-bold text-slate-900">
+              Detalle del Bulto y Cubicación en Tiempo Real
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -524,7 +544,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                     onChange={(e) =>
                       setDimensiones({ ...dimensiones, largo_cm: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#006cb7] focus:outline-none transition-all"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#e52521] focus:outline-none transition-all"
                   />
                   <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">cm</span>
                 </div>
@@ -543,7 +563,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                     onChange={(e) =>
                       setDimensiones({ ...dimensiones, alto_cm: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#006cb7] focus:outline-none transition-all"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#e52521] focus:outline-none transition-all"
                   />
                   <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">cm</span>
                 </div>
@@ -562,7 +582,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                     onChange={(e) =>
                       setDimensiones({ ...dimensiones, ancho_cm: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#006cb7] focus:outline-none transition-all"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#e52521] focus:outline-none transition-all"
                   />
                   <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">cm</span>
                 </div>
@@ -581,7 +601,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
                     onChange={(e) =>
                       setDimensiones({ ...dimensiones, peso_real_kg: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#006cb7] focus:outline-none transition-all"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#e52521] focus:outline-none transition-all"
                   />
                   <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-semibold">kg</span>
                 </div>
@@ -589,56 +609,74 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             </div>
 
             {/* Consola de Resultados de Cubicación en Vivo */}
-            <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-lg border border-slate-700 relative overflow-hidden">
-              <div className="absolute top-0 right-0 translate-x-4 -translate-y-4 w-28 h-28 bg-[#ffcf00]/10 rounded-full blur-xl pointer-events-none"></div>
-
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
-                  <Calculator className="w-3.5 h-3.5 text-[#ffcf00]" />
+            <div className="lg:col-span-5 bg-slate-50 rounded-xl p-5 border border-slate-200 shadow-sm relative">
+              <div className="flex items-center justify-between mb-3.5">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                  <Calculator className="w-4 h-4 text-[#e52521]" />
                   <span>Cálculo de Tarifación</span>
+                </span>
+                <span className="text-[10px] font-semibold bg-white text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full">
+                  Factor: 1/{factorVolumetrico}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className={`p-3 rounded-xl border transition-all ${
-                  !pesoMayorEsVolumetrico ? 'bg-white/10 border-emerald-400/50 shadow-inner' : 'bg-white/5 border-white/5'
-                }`}>
-                  <span className="text-[11px] text-slate-400 block font-medium">Peso Real</span>
-                  <p className="text-xl font-bold font-mono text-white">
-                    {dimensiones.peso_real_kg} <span className="text-xs text-slate-400">kg</span>
+                <div
+                  className={`p-3.5 rounded-xl border transition-all ${
+                    !pesoMayorEsVolumetrico
+                      ? 'bg-white border-2 border-emerald-500 shadow-xs'
+                      : 'bg-white/70 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <span className="text-[11px] text-slate-500 block font-medium">Peso Real</span>
+                  <p className="text-xl font-black font-mono text-slate-900 mt-0.5">
+                    {dimensiones.peso_real_kg} <span className="text-xs font-medium text-slate-400">kg</span>
                   </p>
-                  {!pesoMayorEsVolumetrico && (
-                    <span className="text-[10px] text-emerald-400 font-bold flex items-center mt-0.5">
-                      <Star className="w-3 h-3 mr-1 fill-current" />
+                  {!pesoMayorEsVolumetrico ? (
+                    <span className="text-[10px] text-emerald-700 font-bold flex items-center mt-1 bg-emerald-50 px-1.5 py-0.5 rounded w-fit border border-emerald-200/60">
+                      <Star className="w-3 h-3 mr-1 fill-emerald-600 text-emerald-600" />
                       <span>Mayor (Cobrado)</span>
                     </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 block mt-1">No facturable</span>
                   )}
                 </div>
 
-                <div className={`p-3 rounded-xl border transition-all ${
-                  pesoMayorEsVolumetrico ? 'bg-white/10 border-amber-400/50 shadow-inner' : 'bg-white/5 border-white/5'
-                }`}>
-                  <span className="text-[11px] text-slate-400 block font-medium">Peso Volumétrico</span>
-                  <p className="text-xl font-bold font-mono text-white">
-                    {pesoVolumetrico} <span className="text-xs text-slate-400">kg</span>
+                <div
+                  className={`p-3.5 rounded-xl border transition-all ${
+                    pesoMayorEsVolumetrico
+                      ? 'bg-white border-2 border-[#e52521] shadow-xs'
+                      : 'bg-white/70 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <span className="text-[11px] text-slate-500 block font-medium">Peso Volumétrico</span>
+                  <p className="text-xl font-black font-mono text-slate-900 mt-0.5">
+                    {pesoVolumetrico} <span className="text-xs font-medium text-slate-400">kg</span>
                   </p>
-                  {pesoMayorEsVolumetrico && (
-                    <span className="text-[10px] text-amber-400 font-bold flex items-center mt-0.5">
-                      <Star className="w-3 h-3 mr-1 fill-current" />
+                  {pesoMayorEsVolumetrico ? (
+                    <span className="text-[10px] text-[#e52521] font-bold flex items-center mt-1 bg-red-50 px-1.5 py-0.5 rounded w-fit border border-red-200/60">
+                      <Star className="w-3 h-3 mr-1 fill-[#e52521] text-[#e52521]" />
                       <span>Mayor (Cobrado)</span>
                     </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 block mt-1">No facturable</span>
                   )}
                 </div>
               </div>
 
               {/* Peso final a facturar */}
-              <div className="pt-3 border-t border-slate-700/80 flex items-center justify-between">
-                <span className="text-xs text-slate-300 block font-medium">
-                  Peso a Cobrar (Facturable)
-                </span>
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-700 block">
+                    Peso a Cobrar (Facturable)
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {pesoMayorEsVolumetrico ? 'Rige peso volumétrico' : 'Rige peso real'}
+                  </span>
+                </div>
                 <div className="text-right">
-                  <span className="text-2xl font-black font-mono text-[#ffcf00]">
-                    {pesoCobrado} kg
+                  <span className="text-2xl font-black font-mono text-[#e52521]">
+                    {pesoCobrado} <span className="text-sm font-bold text-slate-600">kg</span>
                   </span>
                 </div>
               </div>
@@ -651,15 +689,13 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             SECCIÓN 3: TRANSPORTE Y COTIZACIÓN ESTIMADA
            ======================================================== */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
-          <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 mb-6">
-            <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+          <div className="flex items-center space-x-2 pb-4 border-b border-slate-100 mb-6">
+            <span className="w-6 h-6 rounded-full bg-[#e52521] text-white flex items-center justify-center text-xs font-bold">
               3
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Selección de Transportista y Verificación de Cobertura
-              </h2>
-            </div>
+            </span>
+            <h2 className="text-base font-bold text-slate-900">
+              Selección de Transportista y Verificación de Cobertura
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -671,7 +707,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
               <select
                 value={transportistaId}
                 onChange={(e) => setTransportistaId(parseInt(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all shadow-sm"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#e52521] transition-all shadow-sm"
               >
                 {transportistas.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -689,7 +725,7 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
               <select
                 value={servicioId}
                 onChange={(e) => setServicioId(parseInt(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all shadow-sm"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#e52521] transition-all shadow-sm"
               >
                 {serviciosDisponibles.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -702,7 +738,15 @@ export const EmisionGuia: React.FC<EmisionGuiaProps> = ({
             {/* Preview de Tarifa y Cobertura */}
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col justify-between">
               <div>
-                <span className="text-xs text-slate-400 block font-medium">Estado de Cobertura</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400 block font-medium">Estado de Cobertura</span>
+                  {cotizando && (
+                    <span className="text-[10px] text-slate-400 font-medium flex items-center">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin mr-1" />
+                      Verificando...
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center space-x-2 mt-1">
                   {tieneCobertura ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">

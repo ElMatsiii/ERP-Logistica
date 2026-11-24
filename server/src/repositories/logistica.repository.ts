@@ -95,6 +95,54 @@ export class LogisticaRepository {
   private fallbackCompras = [...mockComprasOc];
   private fallbackRecepciones = [...mockRecepciones];
 
+  // Caches en memoria para acelerar cotizaciones y navegación
+  private cacheTransportistas: any[] | null = null;
+  private cacheTransportistasExpira = 0;
+  private cacheCoberturas = new Map<string, { data: any; expira: number }>();
+  private cacheTarifas = new Map<string, { data: any; expira: number }>();
+  private cacheComunasOt = new Map<string, { comuna_id: number; comuna_nombre: string | null }>();
+
+  /**
+   * Obtiene de forma rápida y optimizada la comuna de destino de una OT para cotización,
+   * sin cargar detalles pesados de productos ni guías.
+   */
+  async getComunaIdDeOt(
+    otId: string
+  ): Promise<{ existe: boolean; comuna_id: number | null; comuna_nombre: string | null }> {
+    if (this.cacheComunasOt.has(otId)) {
+      const c = this.cacheComunasOt.get(otId)!;
+      return { existe: true, comuna_id: c.comuna_id, comuna_nombre: c.comuna_nombre };
+    }
+    try {
+      const ot = await prisma.log_ot_picking.findUnique({
+        where: { id: otId },
+        select: {
+          id: true,
+          direccion: {
+            select: {
+              comuna_id: true,
+              comuna: {
+                select: { nombre: true },
+              },
+            },
+          },
+        },
+      });
+      if (!ot) return { existe: false, comuna_id: null, comuna_nombre: null };
+      const comunaId = ot.direccion?.comuna_id ?? null;
+      const comunaNombre = ot.direccion?.comuna?.nombre ?? null;
+      if (comunaId) this.cacheComunasOt.set(otId, { comuna_id: comunaId, comuna_nombre: comunaNombre });
+      return { existe: true, comuna_id: comunaId, comuna_nombre: comunaNombre };
+    } catch (err) {
+      const fb = this.fallbackOts.find((o) => o.id === otId);
+      if (!fb) return { existe: false, comuna_id: null, comuna_nombre: null };
+      const comunaId = fb.direccion?.comuna_id ?? null;
+      const comunaNombre = fb.direccion?.comuna?.nombre ?? null;
+      if (comunaId) this.cacheComunasOt.set(otId, { comuna_id: comunaId, comuna_nombre: comunaNombre });
+      return { existe: true, comuna_id: comunaId, comuna_nombre: comunaNombre };
+    }
+  }
+
   /**
    * Obtiene la lista de órdenes de trabajo disponibles (picking) con datos de cliente y dirección.
    */
@@ -168,20 +216,29 @@ export class LogisticaRepository {
 
 
   /**
-   * Verifica si existe cobertura vigente para un servicio y comuna.
+   * Verifica si existe cobertura vigente para un servicio y comuna (con caché de alta velocidad).
    */
   async getCoberturaActiva(servicio_id: number, comuna_id: number) {
+    const key = `${servicio_id}_${comuna_id}`;
+    const ahora = Date.now();
+    const enCache = this.cacheCoberturas.get(key);
+    if (enCache && enCache.expira > ahora) {
+      return enCache.data;
+    }
+
     try {
-      const ahora = new Date();
-      return await prisma.log_cobertura.findFirst({
+      const fechaActual = new Date();
+      const resultado = await prisma.log_cobertura.findFirst({
         where: {
           servicio_id,
           comuna_id,
           vigente: true,
-          vigencia_desde: { lte: ahora },
-          vigencia_hasta: { gte: ahora },
+          vigencia_desde: { lte: fechaActual },
+          vigencia_hasta: { gte: fechaActual },
         },
       });
+      this.cacheCoberturas.set(key, { data: resultado, expira: ahora + 5 * 60 * 1000 });
+      return resultado;
     } catch (err) {
       const match = mockCoberturas.find(
         (c) => c.servicio_id === servicio_id && c.comuna_id === comuna_id
@@ -201,23 +258,32 @@ export class LogisticaRepository {
   }
 
   /**
-   * Obtiene la tarifa configurada para un servicio, comuna y rango de peso.
+   * Obtiene la tarifa configurada para un servicio, comuna y rango de peso (con caché de alta velocidad).
    */
   async getTarifa(servicio_id: number, comuna_id: number, peso_kg: number) {
+    const key = `${servicio_id}_${comuna_id}_${peso_kg}`;
+    const ahora = Date.now();
+    const enCache = this.cacheTarifas.get(key);
+    if (enCache && enCache.expira > ahora) {
+      return enCache.data;
+    }
+
     try {
-      const ahora = new Date();
-      return await prisma.log_tarifa.findFirst({
+      const fechaActual = new Date();
+      const resultado = await prisma.log_tarifa.findFirst({
         where: {
           servicio_id,
           comuna_id,
-          vigencia_desde: { lte: ahora },
-          vigencia_hasta: { gte: ahora },
+          vigencia_desde: { lte: fechaActual },
+          vigencia_hasta: { gte: fechaActual },
           peso_desde_kg: { lte: peso_kg },
         },
         orderBy: {
           peso_hasta_kg: 'desc',
         },
       });
+      this.cacheTarifas.set(key, { data: resultado, expira: ahora + 5 * 60 * 1000 });
+      return resultado;
     } catch (err) {
       const t = mockTarifas.find(
         (x) => x.servicio_id === servicio_id && x.comuna_id === comuna_id
@@ -227,9 +293,40 @@ export class LogisticaRepository {
   }
 
   /**
-   * Obtiene datos del transportista por ID.
+   * Obtiene todos los transportistas activos con sus servicios (cacheados en memoria).
+   */
+  async getTransportistasActivos() {
+    const ahora = Date.now();
+    if (this.cacheTransportistas && this.cacheTransportistasExpira > ahora) {
+      return this.cacheTransportistas;
+    }
+
+    try {
+      const resultado = await prisma.log_transportista.findMany({
+        where: { activo: true },
+        include: {
+          servicios: {
+            where: { activo: true },
+          },
+        },
+        orderBy: { nombre: 'asc' },
+      });
+      this.cacheTransportistas = resultado;
+      this.cacheTransportistasExpira = ahora + 5 * 60 * 1000;
+      return resultado;
+    } catch (err) {
+      return mockTransportistas.filter((t) => t.activo);
+    }
+  }
+
+  /**
+   * Obtiene datos del transportista por ID (utiliza el catálogo en memoria para evitar round-trips).
    */
   async getTransportistaById(id: number) {
+    const activos = await this.getTransportistasActivos();
+    const encontrado = activos.find((t: any) => t.id === id);
+    if (encontrado) return encontrado;
+
     try {
       return await prisma.log_transportista.findUnique({
         where: { id },
@@ -248,6 +345,14 @@ export class LogisticaRepository {
    * Obtiene datos del servicio por ID.
    */
   async getServicioById(id: number) {
+    const transportistas = await this.getTransportistasActivos();
+    for (const t of transportistas) {
+      const s = (t.servicios || []).find((srv: any) => srv.id === id);
+      if (s) {
+        return { ...s, transportista: t };
+      }
+    }
+
     try {
       return await prisma.log_servicio.findUnique({
         where: { id },
@@ -257,25 +362,6 @@ export class LogisticaRepository {
       });
     } catch (err) {
       return mockServicios.find((s) => s.id === id) || null;
-    }
-  }
-
-  /**
-   * Obtiene todos los transportistas activos con sus servicios.
-   */
-  async getTransportistasActivos() {
-    try {
-      return await prisma.log_transportista.findMany({
-        where: { activo: true },
-        include: {
-          servicios: {
-            where: { activo: true },
-          },
-        },
-        orderBy: { nombre: 'asc' },
-      });
-    } catch (err) {
-      return mockTransportistas.filter((t) => t.activo);
     }
   }
 

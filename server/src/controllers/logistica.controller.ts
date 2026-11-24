@@ -58,7 +58,11 @@ export class LogisticaController {
 
   emitirGuia = async (req: Request, res: Response) => {
     try {
-      const resultado = await this.service.emitirGuia(req.body);
+      const payload = {
+        ...req.body,
+        usuario_responsable: req.body?.usuario_responsable || req.usuario?.nombre,
+      };
+      const resultado = await this.service.emitirGuia(payload);
       res.status(201).json(resultado);
     } catch (error: any) {
       if (error instanceof ValidationError) {
@@ -72,9 +76,10 @@ export class LogisticaController {
   /** Reintenta que Inventario confirme el egreso de una guía en 'Pendiente de stock' o 'Error de stock' */
   reintentarStockGuia = async (req: Request, res: Response) => {
     try {
+      const usuarioResp = req.body?.usuario_responsable || req.usuario?.nombre;
       const resultado = await this.service.reintentarConfirmacionStock(
         String(req.params.id),
-        req.body?.usuario_responsable
+        usuarioResp
       );
       res.json(resultado);
     } catch (error: any) {
@@ -106,10 +111,11 @@ export class LogisticaController {
     try {
       const id_guia = String(req.params.id_guia);
       const { estado, usuario_responsable, observacion } = req.body;
+      const usuarioFinal = usuario_responsable || req.usuario?.nombre || 'M. Pizarro';
       const resultado = await this.service.registrarEventoTracking(
         id_guia,
         estado,
-        usuario_responsable,
+        usuarioFinal,
         observacion
       );
       res.status(201).json({
@@ -171,7 +177,11 @@ export class LogisticaController {
 
   registrarRecepcion = async (req: Request, res: Response) => {
     try {
-      const resultado = await this.service.registrarRecepcion(req.body);
+      const payload = {
+        ...req.body,
+        id_empleado_receptor: req.body?.id_empleado_receptor || req.usuario?.id_empleado,
+      };
+      const resultado = await this.service.registrarRecepcion(payload);
       res.status(201).json(resultado);
     } catch (error: any) {
       if (error instanceof ValidationError) {

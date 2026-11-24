@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Send,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { GuiaDespacho, Transportista, ESTADOS_STOCK } from '../types';
 import {
   fetchTracking,
@@ -28,6 +29,7 @@ import {
   prepararDerivacionPostventa,
   type IncidenciaPostventa,
   type PayloadPostventa,
+  invalidarCache,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 
@@ -51,16 +53,22 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   // Guía seleccionada para el Panel Lateral (Split View)
   const [guiaSeleccionada, setGuiaSeleccionada] = useState<GuiaDespacho | null>(null);
 
+  const { user } = useAuth();
+
   // Formulario de nuevo evento
   const [nuevoEstado, setNuevoEstado] = useState<string>('En tránsito');
   const [nuevaObservacion, setNuevaObservacion] = useState<string>('');
-  const [usuarioResponsable, setUsuarioResponsable] = useState<string>('M. Pizarro');
+  const [usuarioResponsable, setUsuarioResponsable] = useState<string>(user.nombre);
   const [guardandoEvento, setGuardandoEvento] = useState<boolean>(false);
   const [mensajeExitoEvento, setMensajeExitoEvento] = useState<string | null>(null);
   const [incidenciaPostventa, setIncidenciaPostventa] = useState<IncidenciaPostventa | null>(null);
   const [payloadPostventa, setPayloadPostventa] = useState<PayloadPostventa | null>(null);
   const [preparandoDerivacion, setPreparandoDerivacion] = useState(false);
   const [errorDerivacion, setErrorDerivacion] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUsuarioResponsable(user.nombre);
+  }, [user]);
 
   // Reintento de la confirmación de stock con Inventario
   const [reintentandoStock, setReintentandoStock] = useState<boolean>(false);
@@ -91,16 +99,20 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   };
 
   // Cargar datos de tracking
-  const cargarTracking = async () => {
+  const cargarTracking = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setError(null);
-      const data = await fetchTracking({
-        busqueda,
-        transportista: filtroTransportista,
-        estado: filtroEstado,
-        fecha: filtroFecha,
-      });
+      const data = await fetchTracking(
+        {
+          busqueda,
+          transportista: filtroTransportista,
+          estado: filtroEstado,
+          fecha: filtroFecha,
+        },
+        f
+      );
       setGuias(data);
 
       // Si había una guía seleccionada, actualizarla con los datos frescos
@@ -212,8 +224,8 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-slate-200 gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="w-3 h-3 bg-blue-600 rounded-full inline-block"></span>
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
+            <span className="w-3 h-3 bg-[#e52521] rounded-full inline-block"></span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#e52521]">
               Monitoreo y Trazabilidad
             </span>
           </div>
@@ -223,7 +235,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
         </div>
 
         <button
-          onClick={cargarTracking}
+          onClick={() => {
+            invalidarCache('tracking');
+            cargarTracking(true);
+          }}
           disabled={cargando}
           className="inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 shadow-sm transition-all"
         >
@@ -424,16 +439,19 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
           <div className="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden sticky top-6 animate-in fade-in slide-in-from-right-4">
             
             {/* Header del Panel Lateral */}
-            <div className="bg-slate-900 text-white p-5 flex items-start justify-between">
+            <div className="bg-slate-50 border-b border-slate-200 p-5 flex items-start justify-between">
               <div>
-                <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-0.5">
-                  Detalle del Envío
-                </span>
-                <h3 className="text-xl font-black tracking-tight font-mono text-[#ffcf00]">
+                <div className="flex items-center space-x-1.5 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-[#e52521]"></span>
+                  <span className="text-[10px] font-bold font-mono tracking-wider uppercase text-[#e52521]">
+                    Detalle del Envío
+                  </span>
+                </div>
+                <h3 className="text-xl font-black tracking-tight font-mono text-slate-900">
                   {guiaSeleccionada.num_seguimiento}
                 </h3>
-                <p className="text-xs text-slate-300 mt-1">
-                  Guía: <strong>{guiaSeleccionada.id}</strong> | OT: <strong>{guiaSeleccionada.ot_id}</strong>
+                <p className="text-xs text-slate-500 mt-1">
+                  Guía: <strong className="text-slate-800 font-mono">{guiaSeleccionada.id}</strong> · OT: <strong className="text-slate-800 font-mono">{guiaSeleccionada.ot_id}</strong>
                 </p>
               </div>
 
@@ -441,7 +459,8 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                 <StatusBadge status={guiaSeleccionada.estado_actual} type="guia" />
                 <button
                   onClick={() => setGuiaSeleccionada(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+                  title="Cerrar detalle"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -671,7 +690,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                     <button
                       type="submit"
                       disabled={guardandoEvento}
-                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-sm"
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#e52521] hover:bg-red-700 text-white text-xs font-bold transition-all shadow-sm disabled:bg-slate-300 disabled:text-slate-500"
                     >
                       {guardandoEvento ? (
                         <>
@@ -680,7 +699,7 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                         </>
                       ) : (
                         <>
-                          <Send className="w-3.5 h-3.5 text-[#ffcf00]" />
+                          <Send className="w-3.5 h-3.5 text-white" />
                           <span>Registrar evento</span>
                         </>
                       )}

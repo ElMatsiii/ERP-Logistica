@@ -261,3 +261,5 @@ export interface RecepcionRegistro {
   detalles: DetalleRecepcion[];
 }
 
+export * from './auth';
+

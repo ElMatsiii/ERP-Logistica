@@ -1,9 +1,17 @@
 import { Router } from 'express';
 import { LogisticaController } from '../controllers/logistica.controller.js';
+import { identificarUsuario, requerirPermiso } from '../middleware/auth.middleware.js';
+import { createAuthRouter } from './auth.routes.js';
 
 export function createLogisticaRouter(controller?: LogisticaController): Router {
   const router = Router();
   const ctrl = controller || new LogisticaController();
+
+  // Middleware global de identificación de usuario y roles
+  router.use(identificarUsuario);
+
+  // Sub-router de autenticación y gestión de roles
+  router.use('/auth', createAuthRouter());
 
   // 1. Pedidos disponibles y estado de picking
   router.get('/pedidos-pendientes', ctrl.getPedidosPendientes);
@@ -17,26 +25,26 @@ export function createLogisticaRouter(controller?: LogisticaController): Router 
   // Auxiliar: Cálculo y validación previa de cotización
   router.post('/cotizar', ctrl.cotizar);
 
-  // 3. Emisión de Guía de Despacho (con validaciones transaccionales)
-  router.post('/guias', ctrl.emitirGuia);
+  // 3. Emisión de Guía de Despacho (con validaciones transaccionales y RBAC)
+  router.post('/guias', requerirPermiso('EMITIR_GUIA'), ctrl.emitirGuia);
 
-  // 3b. Reintento de la confirmación de stock con Inventario (guías en 'Pendiente de stock' o 'Error de stock')
-  router.post('/guias/:id/reintentar-stock', ctrl.reintentarStockGuia);
+  // 3b. Reintento de la confirmación de stock con Inventario
+  router.post('/guias/:id/reintentar-stock', requerirPermiso('REINTENTAR_STOCK'), ctrl.reintentarStockGuia);
 
   // 4. Listado y búsqueda de tracking de guías emitidas
   router.get('/tracking', ctrl.getTracking);
 
   // 5. Inserción de nuevo evento cronológico (append-only) y actualización de estado
-  router.post('/tracking/:id_guia/evento', ctrl.registrarEventoTracking);
-  router.post('/tracking/:id_guia/derivar-postventa', ctrl.derivarEntregaFallida);
-  router.post('/incidencias/:id/caso-postventa', ctrl.vincularCasoPostventa);
+  router.post('/tracking/:id_guia/evento', requerirPermiso('ACTUALIZAR_TRACKING'), ctrl.registrarEventoTracking);
+  router.post('/tracking/:id_guia/derivar-postventa', requerirPermiso('ACTUALIZAR_TRACKING'), ctrl.derivarEntregaFallida);
+  router.post('/incidencias/:id/caso-postventa', requerirPermiso('ACTUALIZAR_TRACKING'), ctrl.vincularCasoPostventa);
 
   // 6. Órdenes de compra pendientes para recepción en muelle (HU-06)
   router.get('/compras-pendientes', ctrl.getComprasPendientes);
   router.get('/compras/:id', ctrl.getCompraById);
 
   // 7. Registro de recepción física en muelle e ingreso a inventario (HU-06)
-  router.post('/recepciones', ctrl.registrarRecepcion);
+  router.post('/recepciones', requerirPermiso('RECEPCION_MUELLE'), ctrl.registrarRecepcion);
   router.get('/recepciones', ctrl.getHistorialRecepciones);
 
   // Auxiliares de recepción: receptores (RRHH) y bodegas de ingreso (Inventario)
