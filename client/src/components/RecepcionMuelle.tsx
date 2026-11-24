@@ -22,6 +22,7 @@ import {
   Empleado,
   Bodega,
 } from '../types';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchComprasPendientes,
   fetchCompraById,
@@ -29,6 +30,7 @@ import {
   fetchHistorialRecepciones,
   fetchEmpleados,
   fetchBodegas,
+  invalidarCache,
 } from '../api/logisticaApi';
 
 type ConteoLinea = { recibida: number; danada: number; motivo: string; bodega: number | null };
@@ -50,12 +52,26 @@ export const RecepcionMuelle: React.FC = () => {
   const [guiaProveedor, setGuiaProveedor] = useState<string>('');
   const [observacionGeneral, setObservacionGeneral] = useState<string>('');
 
+  const { user } = useAuth();
+
   // Receptor (RRHH) y bodegas de ingreso (Inventario)
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [receptorId, setReceptorId] = useState<number | null>(null);
   const [bodegas, setBodegas] = useState<Bodega[]>([]);
   const [errorBodegas, setErrorBodegas] = useState<string | null>(null);
   const receptor = empleados.find((e) => e.id_empleado === receptorId) || null;
+
+  // Auto-seleccionar el empleado activo si coincide con el usuario autenticado
+  useEffect(() => {
+    if (empleados.length > 0) {
+      const match = empleados.find((e) => e.id_empleado === user.id_empleado);
+      if (match) {
+        setReceptorId(match.id_empleado);
+      } else if (!receptorId) {
+        setReceptorId(empleados[0].id_empleado);
+      }
+    }
+  }, [user, empleados]);
 
   // Estados de confirmación y vista
   const [registrando, setRegistrando] = useState<boolean>(false);
@@ -64,13 +80,14 @@ export const RecepcionMuelle: React.FC = () => {
   const [vistaActiva, setVistaActiva] = useState<'formulario' | 'historial'>('formulario');
 
   // Cargar órdenes de compra y el historial
-  const cargarDatos = async () => {
+  const cargarDatos = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setErrorCarga(null);
       const [listaCompras, listaHistorial] = await Promise.all([
-        fetchComprasPendientes(),
-        fetchHistorialRecepciones(),
+        fetchComprasPendientes(f),
+        fetchHistorialRecepciones(f),
       ]);
       setCompras(listaCompras);
       setHistorial(listaHistorial);
@@ -89,14 +106,15 @@ export const RecepcionMuelle: React.FC = () => {
   };
 
   // Empleados y bodegas se cargan aparte: si Inventario no responde, el resto de la pantalla funciona igual
-  const cargarAuxiliares = async () => {
+  const cargarAuxiliares = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
-      setEmpleados(await fetchEmpleados());
+      setEmpleados(await fetchEmpleados(f));
     } catch (err: any) {
       console.error('Error al cargar empleados:', err);
     }
     try {
-      setBodegas(await fetchBodegas());
+      setBodegas(await fetchBodegas(f));
       setErrorBodegas(null);
     } catch (err: any) {
       setErrorBodegas(err.message || 'No se pudieron cargar las bodegas de Inventario.');
@@ -300,7 +318,11 @@ export const RecepcionMuelle: React.FC = () => {
               <span>Historial ({historial.length})</span>
             </button>
             <button
-              onClick={cargarDatos}
+              onClick={() => {
+                invalidarCache('compras');
+                invalidarCache('historial');
+                cargarDatos(true);
+              }}
               disabled={cargando}
               title="Refrescar datos"
               className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
@@ -377,7 +399,7 @@ export const RecepcionMuelle: React.FC = () => {
               onClick={() => setExitoRecepcion(null)}
               className="text-emerald-700 hover:text-emerald-900 text-sm font-semibold p-1"
             >
-              ✕ Cerrar
+              Cerrar
             </button>
           </div>
         </div>
@@ -482,7 +504,7 @@ export const RecepcionMuelle: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={cargarAuxiliares}
+                    onClick={() => cargarAuxiliares(true)}
                     className="font-bold text-amber-800 hover:underline whitespace-nowrap"
                   >
                     Reintentar

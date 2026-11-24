@@ -19,12 +19,14 @@ import {
   ShieldCheck,
   Send,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { GuiaDespacho, Transportista, ESTADOS_STOCK } from '../types';
 import {
   fetchTracking,
   fetchTransportistas,
   registrarEventoTracking,
   reintentarStockGuia,
+  invalidarCache,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
 
@@ -48,12 +50,18 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   // Guía seleccionada para el Panel Lateral (Split View)
   const [guiaSeleccionada, setGuiaSeleccionada] = useState<GuiaDespacho | null>(null);
 
+  const { user } = useAuth();
+
   // Formulario de nuevo evento
   const [nuevoEstado, setNuevoEstado] = useState<string>('En tránsito');
   const [nuevaObservacion, setNuevaObservacion] = useState<string>('');
-  const [usuarioResponsable, setUsuarioResponsable] = useState<string>('M. Pizarro');
+  const [usuarioResponsable, setUsuarioResponsable] = useState<string>(user.nombre);
   const [guardandoEvento, setGuardandoEvento] = useState<boolean>(false);
   const [mensajeExitoEvento, setMensajeExitoEvento] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUsuarioResponsable(user.nombre);
+  }, [user]);
 
   // Reintento de la confirmación de stock con Inventario
   const [reintentandoStock, setReintentandoStock] = useState<boolean>(false);
@@ -66,16 +74,20 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   }, [guiaSeleccionada?.id]);
 
   // Cargar datos de tracking
-  const cargarTracking = async () => {
+  const cargarTracking = async (forzar?: boolean | unknown) => {
+    const f = forzar === true;
     try {
       setCargando(true);
       setError(null);
-      const data = await fetchTracking({
-        busqueda,
-        transportista: filtroTransportista,
-        estado: filtroEstado,
-        fecha: filtroFecha,
-      });
+      const data = await fetchTracking(
+        {
+          busqueda,
+          transportista: filtroTransportista,
+          estado: filtroEstado,
+          fecha: filtroFecha,
+        },
+        f
+      );
       setGuias(data);
 
       // Si había una guía seleccionada, actualizarla con los datos frescos
@@ -198,7 +210,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
         </div>
 
         <button
-          onClick={cargarTracking}
+          onClick={() => {
+            invalidarCache('tracking');
+            cargarTracking(true);
+          }}
           disabled={cargando}
           className="inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 shadow-sm transition-all"
         >
