@@ -661,6 +661,63 @@ export class LogisticaService {
     return this.repository.getTrackingGuias(filtros);
   }
 
+  /** Prepara la derivación local. El envío a Postventa requiere un contrato API acordado. */
+  async derivarEntregaFallida(guiaId: string) {
+    const guia = await this.repository.getGuiaById(guiaId);
+    if (!guia) throw new ValidationError(`La guía ${guiaId} no existe`, 404);
+    if (guia.estado_actual !== 'Entrega Fallida') {
+      throw new ValidationError('Solo se puede derivar una guía con estado Entrega Fallida', 409);
+    }
+    const eventos = (guia.eventos ?? []) as Array<{ id: number; estado: string; observacion: string; fecha_hora: Date | string }>;
+    const evento = [...eventos].reverse().find((item) => item.estado === 'Entrega Fallida');
+    if (!evento) throw new ValidationError('La guía no tiene un evento de entrega fallida', 409);
+    const ot = guia.ot as { id_pedido: number; detalles?: Array<{
+      id: number; id_producto: number; sku: string; cant_recolectada: number;
+    }> } | undefined;
+    if (!ot) throw new ValidationError('La guía no tiene una OT asociada para preparar el envío a Postventa', 422);
+    const incidencia = await this.repository.derivarEntregaFallida(guiaId, evento.id, evento.observacion);
+
+    return {
+      incidencia,
+      payload: {
+        id_incidencia: incidencia.id,
+        id_evento_tracking: evento.id,
+        id_guia: guia.id,
+        numero_seguimiento: guia.num_seguimiento,
+        tipo: incidencia.tipo,
+        motivo: incidencia.descripcion,
+        fecha_evento: new Date(evento.fecha_hora).toISOString(),
+        fecha_incidencia: new Date(incidencia.fecha_registro).toISOString(),
+        id_pedido: ot.id_pedido,
+        lineas_despachadas: (ot.detalles ?? [])
+          .filter((linea) => Number(linea.cant_recolectada) > 0)
+          .map((linea) => ({
+            id_linea_ot: linea.id,
+            id_producto: linea.id_producto,
+            sku: linea.sku,
+            cantidad_despachada: Number(linea.cant_recolectada),
+          })),
+      },
+    };
+  }
+
+  async vincularCasoPostventa(incidenciaId: number, casoId: number) {
+    if (!Number.isSafeInteger(incidenciaId) || incidenciaId <= 0 ||
+        !Number.isSafeInteger(casoId) || casoId <= 0) {
+      throw new ValidationError('Los identificadores de incidencia y caso deben ser enteros positivos', 400);
+    }
+    const incidencia = await this.repository.getIncidencia(incidenciaId);
+    if (!incidencia) throw new ValidationError(`La incidencia ${incidenciaId} no existe`, 404);
+    if (incidencia.id_caso_postventa !== null && incidencia.id_caso_postventa !== casoId) {
+      throw new ValidationError('La incidencia ya está vinculada a otro caso de Postventa', 409);
+    }
+    const vinculada = await this.repository.vincularCasoPostventa(incidenciaId, casoId);
+    if (vinculada?.id_caso_postventa !== casoId) {
+      throw new ValidationError('La incidencia ya está vinculada a otro caso de Postventa', 409);
+    }
+    return vinculada;
+  }
+
   /**
    * Inserta un nuevo evento append-only en la bitácora y actualiza el estado_actual denormalizado.
    */

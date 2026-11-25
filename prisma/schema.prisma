@@ -277,6 +277,7 @@ model log_incidencia {
   fecha_registro    DateTime          @default(now())
   descripcion       String
   id_caso_postventa Int?
+  evento_tracking_id Int?             @unique
   resuelta          Boolean           @default(false)
 
   guia              log_guia_despacho @relation(fields: [guia_id], references: [id], onDelete: Cascade)

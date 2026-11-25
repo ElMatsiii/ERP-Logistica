@@ -263,4 +263,3 @@ export interface RecepcionRegistro {
 
 export * from './auth';
 
-

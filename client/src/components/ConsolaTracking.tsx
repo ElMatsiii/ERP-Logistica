@@ -26,6 +26,9 @@ import {
   fetchTransportistas,
   registrarEventoTracking,
   reintentarStockGuia,
+  prepararDerivacionPostventa,
+  type IncidenciaPostventa,
+  type PayloadPostventa,
   invalidarCache,
 } from '../api/logisticaApi';
 import { StatusBadge } from './StatusBadge';
@@ -58,6 +61,10 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
   const [usuarioResponsable, setUsuarioResponsable] = useState<string>(user.nombre);
   const [guardandoEvento, setGuardandoEvento] = useState<boolean>(false);
   const [mensajeExitoEvento, setMensajeExitoEvento] = useState<string | null>(null);
+  const [incidenciaPostventa, setIncidenciaPostventa] = useState<IncidenciaPostventa | null>(null);
+  const [payloadPostventa, setPayloadPostventa] = useState<PayloadPostventa | null>(null);
+  const [preparandoDerivacion, setPreparandoDerivacion] = useState(false);
+  const [errorDerivacion, setErrorDerivacion] = useState<string | null>(null);
 
   useEffect(() => {
     setUsuarioResponsable(user.nombre);
@@ -71,7 +78,25 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
 
   useEffect(() => {
     setMensajeStock(null);
+    setIncidenciaPostventa(null);
+    setPayloadPostventa(null);
+    setErrorDerivacion(null);
   }, [guiaSeleccionada?.id]);
+
+  const handlePrepararDerivacion = async () => {
+    if (!guiaSeleccionada) return;
+    try {
+      setPreparandoDerivacion(true);
+      setErrorDerivacion(null);
+      const derivacion = await prepararDerivacionPostventa(guiaSeleccionada.id);
+      setIncidenciaPostventa(derivacion.incidencia);
+      setPayloadPostventa(derivacion.payload);
+    } catch (err: any) {
+      setErrorDerivacion(err.message || 'No se pudo preparar la derivación');
+    } finally {
+      setPreparandoDerivacion(false);
+    }
+  };
 
   // Cargar datos de tracking
   const cargarTracking = async (forzar?: boolean | unknown) => {
@@ -486,6 +511,29 @@ export const ConsolaTracking: React.FC<ConsolaTrackingProps> = ({ initialSearch 
                   </p>
                 </div>
               </div>
+
+              {guiaSeleccionada.estado_actual === 'Entrega Fallida' && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs space-y-2">
+                  <p className="font-bold text-red-900">Incidencia de entrega fallida</p>
+                  <p className="text-red-800">Prepara el registro para vincularlo con un caso de Postventa.</p>
+                  <button type="button" onClick={handlePrepararDerivacion} disabled={preparandoDerivacion}
+                    className="px-3 py-2 rounded-lg bg-red-700 text-white font-bold disabled:opacity-60">
+                    {preparandoDerivacion ? 'Preparando...' : 'Preparar derivación'}
+                  </button>
+                  {incidenciaPostventa && <p className="text-red-900">Incidencia #{incidenciaPostventa.id} registrada. Caso de Postventa: {incidenciaPostventa.id_caso_postventa ?? 'pendiente de vincular'}.</p>}
+                  {payloadPostventa && (
+                    <details className="text-red-900">
+                      <summary className="cursor-pointer font-semibold">Ver JSON acordado con Postventa</summary>
+                      <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-white p-2 text-[11px] whitespace-pre-wrap">{JSON.stringify(payloadPostventa, null, 2)}</pre>
+                      <button type="button" className="mt-2 rounded-lg border border-red-300 bg-white px-3 py-1.5 font-semibold"
+                        onClick={() => navigator.clipboard.writeText(JSON.stringify(payloadPostventa, null, 2))}>
+                        Copiar JSON
+                      </button>
+                    </details>
+                  )}
+                  {errorDerivacion && <p className="text-red-900">{errorDerivacion}</p>}
+                </div>
+              )}
 
               {/* LÍNEA DE TIEMPO VERTICAL (log_evento_tracking) */}
               <div>
