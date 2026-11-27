@@ -9,7 +9,7 @@ import type { ConfigAuth } from '../config/auth.config.js';
 import type { LogisticaController } from '../controllers/logistica.controller.js';
 import { ClienteRrhhSimulado, EMPLEADOS_SIMULADOS as E } from '../integrations/rrhh/cliente-simulado.js';
 import { CONTRASENA_DEMO } from '../integrations/rrhh/cliente-simulado.js';
-import { MENSAJE_DATOS_LOGIN } from '../controllers/sesion.controller.js';
+import { MENSAJE_DATOS_LOGIN, MENSAJE_LOGIN_EN_PORTAL } from '../controllers/sesion.controller.js';
 import { MENSAJES_AUTH, SesionService } from '../services/sesion.service.js';
 import { MENSAJES_IDENTIFICACION } from './auth.middleware.js';
 
@@ -205,51 +205,19 @@ describe('HTTP · AUTH_MODO=jwt', () => {
     });
   });
 
-  describe('POST /api/auth/login (público)', () => {
-    it('login correcto → { accessToken, usuario } sin datos sensibles; el token sirve en las rutas', async () => {
+  describe('POST /api/auth/login no existe en modo jwt (el login lo hace el portal de RRHH)', () => {
+    it('credenciales correctas → 404 "inicia sesión desde el portal", sin token', async () => {
       const { status, body } = await login(s, 'eparedes@lesgo.test', CONTRASENA_DEMO);
-      assert.equal(status, 200);
-      assert.deepEqual(Object.keys(body).sort(), ['accessToken', 'usuario']);
-      assert.equal(body.usuario.id_empleado, E.RECEPCION);
-      assert.equal(body.usuario.rol, 'OPERADOR_RECEPCION');
-      assert.doesNotMatch(JSON.stringify(body.usuario), /password|\$2[aby]\$/);
-
-      const payload = jwt.verify(body.accessToken, SECRETO, { algorithms: ['HS256'] }) as jwt.JwtPayload;
-      assert.equal(payload.sub, E.RECEPCION);
-      assert.equal(payload.source, 'db');
-
-      assert.equal((await pedir(s, 'POST', '/api/logistica/recepciones', bearer(body.accessToken))).status, 200);
-      assert.equal((await pedir(s, 'POST', '/api/logistica/guias', bearer(body.accessToken))).status, 403);
+      assert.equal(status, 404);
+      assert.deepEqual(body, { error: MENSAJE_LOGIN_EN_PORTAL });
     });
 
-    it('contraseña incorrecta y email inexistente → 401 con el mismo mensaje', async () => {
-      for (const [email, password] of [['eparedes@lesgo.test', 'mala'], ['nadie@lesgo.test', CONTRASENA_DEMO]]) {
-        const { status, body } = await login(s, email, password);
-        assert.equal(status, 401);
-        assert.deepEqual(body, { error: MENSAJES_AUTH.CREDENCIALES_INVALIDAS });
-      }
-    });
-
-    it('usuario bloqueado y empleado inactivo → 401 "La cuenta no está activa"', async () => {
-      for (const email of ['dfuentes@lesgo.test', 'pvera@lesgo.test']) {
-        const { status, body } = await login(s, email, CONTRASENA_DEMO);
-        assert.equal(status, 401, email);
-        assert.equal(body.error, MENSAJES_AUTH.CUENTA_NO_ACTIVA);
-      }
-    });
-
-    it('sin rol de Logística → 403', async () => {
-      const { status, body } = await login(s, 'cherrera@lesgo.test', CONTRASENA_DEMO);
-      assert.equal(status, 403);
-      assert.equal(body.error, MENSAJES_AUTH.SIN_ACCESO_LOGISTICA);
-    });
-
-    it('faltan email o contraseña, o no son texto → 400', async () => {
-      const cuerpos = [{}, { email: 'eparedes@lesgo.test' }, { password: CONTRASENA_DEMO }, { email: '  ', password: 'x' }, { email: 1, password: 2 }];
-      for (const cuerpo of cuerpos) {
+    it('cualquier cuerpo → el mismo 404 (no revela si la cuenta existe ni su estado)', async () => {
+      const casos: unknown[] = [{}, { email: 'eparedes@lesgo.test', password: 'mala' }, { email: 'nadie@lesgo.test', password: 'x' }, { email: 'dfuentes@lesgo.test', password: CONTRASENA_DEMO }];
+      for (const cuerpo of casos) {
         const { status, body } = await pedir(s, 'POST', '/api/auth/login', {}, cuerpo);
-        assert.equal(status, 400, JSON.stringify(cuerpo));
-        assert.equal(body.error, MENSAJE_DATOS_LOGIN);
+        assert.equal(status, 404, JSON.stringify(cuerpo));
+        assert.deepEqual(body, { error: MENSAJE_LOGIN_EN_PORTAL });
       }
     });
 
@@ -265,7 +233,7 @@ describe('HTTP · AUTH_MODO=jwt', () => {
     it('responde el modo sin token y solo con las claves públicas', async () => {
       const { status, body } = await pedir(s, 'GET', '/api/auth/config');
       assert.equal(status, 200);
-      assert.deepEqual(body, { modo: 'jwt', login_con_contrasena: true });
+      assert.deepEqual(body, { modo: 'jwt', acepta_tokens: true });
     });
 
     it('nunca expone el secreto ni datos de configuración', async () => {
@@ -283,12 +251,13 @@ describe('HTTP · AUTH_MODO=jwt', () => {
       assert.equal(body.error, MENSAJES_IDENTIFICACION.SIN_TOKEN);
     });
 
-    it('con el token del login → { autenticado, usuario }', async () => {
-      const { body: sesion } = await login(s, 'mpizarro@lesgo.test', CONTRASENA_DEMO);
-      const { status, body } = await pedir(s, 'GET', '/api/auth/me', bearer(sesion.accessToken));
+    it('con un token válido → { autenticado, usuario } sin datos sensibles', async () => {
+      const { status, body } = await pedir(s, 'GET', '/api/auth/me', bearer(await tokenDe(E.COORDINADOR)));
       assert.equal(status, 200);
       assert.equal(body.autenticado, true);
-      assert.deepEqual(body.usuario, sesion.usuario);
+      assert.equal(body.usuario.id_empleado, E.COORDINADOR);
+      assert.equal(body.usuario.rol, 'COORDINADOR_LOGISTICA');
+      assert.doesNotMatch(JSON.stringify(body), /password|\$2[aby]\$/);
     });
 
     it('acepta un token emitido por el portal de RRHH (inicio de sesión único)', async () => {
@@ -309,7 +278,7 @@ describe('HTTP · AUTH_MODO=jwt', () => {
       assert.equal((await pedir(s, 'GET', '/api/logistica/auth/usuarios', bearer(token))).status, 404);
       const { status, body } = await pedir(s, 'POST', '/api/logistica/auth/login', bearer(token), { id_empleado: E.COORDINADOR });
       assert.equal(status, 404);
-      assert.match(body.error, /POST \/api\/auth\/login/);
+      assert.match(body.error, /portal del ERP/);
     });
 
     it('/api/logistica/auth/roles y /me siguen disponibles con token', async () => {
@@ -376,10 +345,54 @@ describe('HTTP · AUTH_MODO=simulado', () => {
     assert.equal((await pedir(s, 'GET', '/api/logistica/auth/usuarios')).status, 401);
   });
 
-  it('POST /api/auth/login también funciona en modo simulado', async () => {
-    const { status, body } = await login(s, 'cgomez@lesgo.test', CONTRASENA_DEMO);
-    assert.equal(status, 200);
-    assert.equal((await pedir(s, 'GET', '/api/auth/me', bearer(body.accessToken))).body.usuario.id_empleado, E.DESPACHO);
+  describe('POST /api/auth/login (solo simulado: desarrollo y pruebas)', () => {
+    it('login correcto → { accessToken, usuario } sin datos sensibles; el token sirve en las rutas', async () => {
+      const { status, body } = await login(s, 'eparedes@lesgo.test', CONTRASENA_DEMO);
+      assert.equal(status, 200);
+      assert.deepEqual(Object.keys(body).sort(), ['accessToken', 'usuario']);
+      assert.equal(body.usuario.id_empleado, E.RECEPCION);
+      assert.equal(body.usuario.rol, 'OPERADOR_RECEPCION');
+      assert.doesNotMatch(JSON.stringify(body.usuario), /password|\$2[aby]\$/);
+
+      const payload = jwt.verify(body.accessToken, SECRETO, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      assert.equal(payload.sub, E.RECEPCION);
+      assert.equal(payload.source, 'db');
+
+      assert.equal((await pedir(s, 'GET', '/api/auth/me', bearer(body.accessToken))).body.usuario.id_empleado, E.RECEPCION);
+      assert.equal((await pedir(s, 'POST', '/api/logistica/recepciones', bearer(body.accessToken))).status, 200);
+      assert.equal((await pedir(s, 'POST', '/api/logistica/guias', bearer(body.accessToken))).status, 403);
+    });
+
+    it('contraseña incorrecta y email inexistente → 401 con el mismo mensaje', async () => {
+      for (const [email, password] of [['eparedes@lesgo.test', 'mala'], ['nadie@lesgo.test', CONTRASENA_DEMO]]) {
+        const { status, body } = await login(s, email, password);
+        assert.equal(status, 401);
+        assert.deepEqual(body, { error: MENSAJES_AUTH.CREDENCIALES_INVALIDAS });
+      }
+    });
+
+    it('usuario bloqueado y empleado inactivo → 401 "La cuenta no está activa"', async () => {
+      for (const email of ['dfuentes@lesgo.test', 'pvera@lesgo.test']) {
+        const { status, body } = await login(s, email, CONTRASENA_DEMO);
+        assert.equal(status, 401, email);
+        assert.equal(body.error, MENSAJES_AUTH.CUENTA_NO_ACTIVA);
+      }
+    });
+
+    it('sin rol de Logística → 403', async () => {
+      const { status, body } = await login(s, 'cherrera@lesgo.test', CONTRASENA_DEMO);
+      assert.equal(status, 403);
+      assert.equal(body.error, MENSAJES_AUTH.SIN_ACCESO_LOGISTICA);
+    });
+
+    it('faltan email o contraseña, o no son texto → 400', async () => {
+      const cuerpos = [{}, { email: 'eparedes@lesgo.test' }, { password: CONTRASENA_DEMO }, { email: '  ', password: 'x' }, { email: 1, password: 2 }];
+      for (const cuerpo of cuerpos) {
+        const { status, body } = await pedir(s, 'POST', '/api/auth/login', {}, cuerpo);
+        assert.equal(status, 400, JSON.stringify(cuerpo));
+        assert.equal(body.error, MENSAJE_DATOS_LOGIN);
+      }
+    });
   });
 
   it('GET /api/auth/me acepta x-user-* en modo simulado', async () => {
@@ -391,15 +404,14 @@ describe('HTTP · AUTH_MODO=simulado', () => {
   it('GET /api/auth/config informa modo simulado, sin identificación', async () => {
     const { status, body } = await pedir(s, 'GET', '/api/auth/config');
     assert.equal(status, 200);
-    assert.equal(body.modo, 'simulado');
-    assert.equal(body.login_con_contrasena, true);
+    assert.deepEqual(body, { modo: 'simulado', acepta_tokens: true });
   });
 
   it('sin JWT_SECRET: login y Bearer → 503; las cabeceras siguen funcionando', async () => {
     const sinSecreto = await levantar({ ...CONFIG_SIMULADO, jwtSecret: null });
     try {
       const config = await pedir(sinSecreto, 'GET', '/api/auth/config');
-      assert.deepEqual(config.body, { modo: 'simulado', login_con_contrasena: false });
+      assert.deepEqual(config.body, { modo: 'simulado', acepta_tokens: false });
       const conToken = await pedir(sinSecreto, 'GET', '/api/logistica/auth/me', bearer(await tokenDe(E.DESPACHO)));
       assert.equal(conToken.status, 503);
       assert.equal(conToken.body.error, MENSAJES_AUTH.JWT_NO_CONFIGURADO);

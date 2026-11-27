@@ -29,7 +29,7 @@ export interface UsuarioLogistica {
 export interface ConfigAuthPublica {
   modo: 'jwt' | 'simulado';
   /** false = el servidor no tiene JWT_SECRET: no puede validar tokens del portal */
-  login_con_contrasena: boolean;
+  acepta_tokens: boolean;
 }
 
 export interface RolConfig {

@@ -190,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sesion !== null &&
         // Una sesión simulada no sirve si el servidor está en modo jwt; un token no sirve si el servidor no puede verificarlo
         !(sesion.tipo === 'simulado' && cfg.modo !== 'simulado') &&
-        !(sesion.tipo === 'token' && !cfg.login_con_contrasena);
+        !(sesion.tipo === 'token' && !cfg.acepta_tokens);
 
       if (!sesionUtilizable) {
         if (sesion) borrarSesion();

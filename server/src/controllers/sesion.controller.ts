@@ -3,15 +3,20 @@ import type { ConfigAuth, ModoAuth } from '../config/auth.config.js';
 import { AuthError, type SesionService } from '../services/sesion.service.js';
 
 export const MENSAJE_DATOS_LOGIN = 'Debes indicar email y contraseña';
+export const MENSAJE_LOGIN_EN_PORTAL = 'El inicio de sesión se hace desde el portal del ERP (RRHH)';
 
 /** Respuesta pública de GET /api/auth/config: solo cómo se puede iniciar sesión, nada sensible. */
 export interface ConfigAuthPublica {
   modo: ModoAuth;
-  /** true si JWT_SECRET está configurado (POST /api/auth/login disponible) */
-  login_con_contrasena: boolean;
+  /** true si JWT_SECRET está configurado: el servidor puede validar los tokens del portal de RRHH */
+  acepta_tokens: boolean;
 }
 
-/** GET /api/auth/config, POST /api/auth/login y GET /api/auth/me. Nunca registra la contraseña ni el cuerpo de la petición. */
+/**
+ * GET /api/auth/config, POST /api/auth/login y GET /api/auth/me.
+ * El login lo hace el portal de RRHH: POST /api/auth/login solo existe en AUTH_MODO=simulado (desarrollo y pruebas).
+ * Nunca registra la contraseña ni el cuerpo de la petición.
+ */
 export class SesionController {
   constructor(
     private readonly sesion: SesionService,
@@ -22,12 +27,17 @@ export class SesionController {
   config = (_req: Request, res: Response) => {
     const respuesta: ConfigAuthPublica = {
       modo: this.configAuth.modo,
-      login_con_contrasena: this.configAuth.jwtSecret !== null,
+      acepta_tokens: this.configAuth.jwtSecret !== null,
     };
     res.json(respuesta);
   };
 
+  /** Solo AUTH_MODO=simulado. En jwt la sesión se inicia en el portal de RRHH, que redirige con el token. */
   login = async (req: Request, res: Response) => {
+    if (this.configAuth.modo !== 'simulado') {
+      return res.status(404).json({ error: MENSAJE_LOGIN_EN_PORTAL });
+    }
+
     const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown };
     if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
       return res.status(400).json({ error: MENSAJE_DATOS_LOGIN });

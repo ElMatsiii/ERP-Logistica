@@ -6,8 +6,9 @@ import type { SesionService } from '../services/sesion.service.js';
 /**
  * /api/auth
  * - GET  /config (público): modo de autenticación del servidor, sin datos sensibles
- * - POST /login  (público): email + contraseña de RRHH → { accessToken, usuario }
- * - GET  /me     (autenticado): usuario de la sesión actual
+ * - POST /login  (público, SOLO AUTH_MODO=simulado): email + contraseña → { accessToken, usuario }.
+ *                En jwt responde 404: el login lo hace el portal de RRHH.
+ * - GET  /me     (autenticado): usuario de la sesión actual (token del portal o usuario simulado)
  */
 export function createSesionRouter(opciones: {
   sesion: SesionService;
