@@ -25,6 +25,13 @@ export interface UsuarioLogistica {
   pestañas_permitidas: ('emision' | 'tracking' | 'recepcion')[];
 }
 
+/** GET /api/auth/config (público) */
+export interface ConfigAuthPublica {
+  modo: 'jwt' | 'simulado';
+  /** false = el servidor no tiene JWT_SECRET: no puede validar tokens del portal */
+  login_con_contrasena: boolean;
+}
+
 export interface RolConfig {
   rol: RolLogistica;
   nombre: string;

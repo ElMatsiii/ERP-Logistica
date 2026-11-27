@@ -40,6 +40,8 @@ interface OpcionesSolicitud {
   mensajeError: string;
   /** false = un 401 no cierra la sesión (p. ej. el propio login con credenciales malas) */
   cerrarSesionEn401?: boolean;
+  /** true = rutas públicas (config, login): no se envía ninguna identificación */
+  sinIdentificacion?: boolean;
 }
 
 /**
@@ -50,7 +52,7 @@ interface OpcionesSolicitud {
  * se lanzan como ErrorApi con el mensaje del servidor, que los componentes muestran.
  */
 export async function solicitar<T>(url: string, opciones: OpcionesSolicitud): Promise<T> {
-  const headers: Record<string, string> = { ...cabecerasDeSesion() };
+  const headers: Record<string, string> = opciones.sinIdentificacion ? {} : { ...cabecerasDeSesion() };
   if (opciones.body !== undefined) headers['Content-Type'] = 'application/json';
 
   let res: Response;

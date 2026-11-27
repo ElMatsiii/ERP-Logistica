@@ -9,7 +9,10 @@ import { ShieldAlert, ArrowRight, Lock } from 'lucide-react';
 
 function AppContent() {
   const { user, canAccessTab } = useAuth();
-  const [activeTab, setActiveTab] = useState<'emision' | 'tracking' | 'recepcion'>('emision');
+  // Arranca en la primera pestaña permitida del usuario (no en 'emision' por defecto)
+  const [activeTab, setActiveTab] = useState<'emision' | 'tracking' | 'recepcion'>(
+    () => user.pestañas_permitidas[0] ?? 'emision'
+  );
   const [trackingSearch, setTrackingSearch] = useState<string>('');
 
   // Sincronización automática de pestaña al cambiar de rol:
