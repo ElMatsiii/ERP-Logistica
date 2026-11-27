@@ -1,7 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { Prisma } from '@prisma/client';
-import { ClienteRrhhSimulado, EMPLEADOS_SIMULADOS as E } from './cliente-simulado.js';
+import bcrypt from 'bcryptjs';
+import { CONTRASENA_DEMO, ClienteRrhhSimulado, EMPLEADOS_SIMULADOS as E, HASH_SIMULADO } from './cliente-simulado.js';
 import { ClienteRrhhBd, type EjecutorSql } from './cliente-bd.js';
 import { RrhhError } from './errores.js';
 import { fechaCalendario, sumarDias } from './fechas.js';
@@ -70,6 +71,29 @@ describe('RRHH · Cliente simulado', () => {
     it('la ausencia vigente se calcula respecto de hoy si no se fija la fecha', async () => {
       const real = new ClienteRrhhSimulado();
       assert.equal(await real.estaAusente(E.DESPACHO_AUSENTE, new Date()), true);
+    });
+  });
+
+  describe('contraseña de demo', () => {
+    it('el hash es bcrypt válido de LesGo-Demo-2026', async () => {
+      assert.equal(CONTRASENA_DEMO, 'LesGo-Demo-2026');
+      assert.match(HASH_SIMULADO, /^\$2[aby]\$10\$/);
+      assert.equal(await bcrypt.compare(CONTRASENA_DEMO, HASH_SIMULADO), true);
+    });
+
+    it('rechaza otras contraseñas', async () => {
+      for (const otra of ['', 'lesgo-demo-2026', 'LesGo-Demo-2025', `${CONTRASENA_DEMO} `]) {
+        assert.equal(await bcrypt.compare(otra, HASH_SIMULADO), false, otra);
+      }
+    });
+
+    it('todas las cuentas simuladas (incluidas bloqueada, inactiva y sin rol) usan la contraseña de demo', async () => {
+      const ids = Object.values(E).filter((id) => id !== E.SIN_USUARIO);
+      for (const id of ids) {
+        const cuenta = await cliente.buscarCuentaPorId(id);
+        assert.ok(cuenta, `falta la cuenta ${id}`);
+        assert.equal(await bcrypt.compare(CONTRASENA_DEMO, cuenta.password_hash), true, `cuenta ${id}`);
+      }
     });
   });
 

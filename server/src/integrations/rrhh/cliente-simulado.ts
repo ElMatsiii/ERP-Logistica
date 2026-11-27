@@ -36,10 +36,20 @@ export interface AusenciaSimulada {
 export const ESTADOS_AUSENCIA_VIGENTE: readonly AusenciaSimulada['estado'][] = ['aprobada', 'en_curso'];
 
 /**
- * Hash de relleno: no corresponde a ninguna contraseña, así que ninguna cuenta simulada
- * puede iniciar sesión todavía. Se reemplaza por hashes bcrypt reales en la Fase 2.
+ * CONTRASEÑA DE DEMO de todas las cuentas simuladas (RRHH_MODO=simulado): LesGo-Demo-2026
+ *
+ * Solo existe en estos datos en memoria; no es una contraseña de RRHH ni va en .env.
+ * Todas las cuentas la comparten, así que los casos de cuenta bloqueada, empleado inactivo y sin rol
+ * de Logística pasan la contraseña y fallan en la validación que corresponde.
+ * Iniciar sesión con el email de la cuenta, p. ej. mpizarro@lesgo.test (ver empleadosSimuladosPorDefecto).
  */
-export const HASH_SIMULADO = '$simulado$sin-contrasena';
+export const CONTRASENA_DEMO = 'LesGo-Demo-2026';
+
+/**
+ * bcrypt (bcryptjs, costo 10) de CONTRASENA_DEMO, precalculado para no gastar ~100 ms
+ * por cada cliente simulado que se crea.
+ */
+export const HASH_SIMULADO = '$2b$10$5ovnYQsASparZwg8AgtPw.Okn01693JZ9993CdSFf7H1CmMZx9Sq6';
 
 /**
  * IDs de los empleados de prueba, para usarlos en tests sin repetir números.
