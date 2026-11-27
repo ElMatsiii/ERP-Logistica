@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { UsuarioLogistica, RolConfig, RolLogistica, PermisoLogistica } from '../types';
+import { guardarSesion, leerSesion } from '../api/sesion';
 
 export const ROLES_LOGISTICA: Record<RolLogistica, RolConfig> = {
   COORDINADOR_LOGISTICA: {
@@ -99,43 +100,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'lesgo_logistica_usuario_activo_v2';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // La sesión (sesion.ts) es lo que usa la API para identificar al usuario (x-user-id del usuario elegido).
+  // Se guarda de forma sincrónica, antes de que los componentes hijos pidan datos en sus useEffect.
   const [user, setUser] = useState<UsuarioLogistica>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const match = USUARIOS_LOGISTICA.find((u) => u.id_empleado === parsed.id_empleado);
-        if (match) return match;
-      }
-    } catch {
-      // Fallback si localStorage falla
-    }
-    return USUARIOS_LOGISTICA[0]; // Maximiliano Pizarro por defecto
+    const sesion = leerSesion();
+    const guardado =
+      sesion?.tipo === 'simulado' ? USUARIOS_LOGISTICA.find((u) => u.id_empleado === sesion.idEmpleado) : undefined;
+    const inicial = guardado ?? USUARIOS_LOGISTICA[0]; // Maximiliano Pizarro por defecto (se elimina con la pantalla de login)
+    guardarSesion({ tipo: 'simulado', idEmpleado: inicial.id_empleado });
+    return inicial;
   });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    } catch {
-      // Ignore write errors
-    }
-  }, [user]);
+  const cambiarA = (target: UsuarioLogistica | undefined) => {
+    if (!target) return;
+    guardarSesion({ tipo: 'simulado', idEmpleado: target.id_empleado });
+    setUser(target);
+  };
 
   const switchUser = (idEmpleado: number) => {
-    const target = USUARIOS_LOGISTICA.find((u) => u.id_empleado === idEmpleado);
-    if (target) {
-      setUser(target);
-    }
+    cambiarA(USUARIOS_LOGISTICA.find((u) => u.id_empleado === idEmpleado));
   };
 
   const switchRol = (rol: RolLogistica) => {
-    const target = USUARIOS_LOGISTICA.find((u) => u.rol === rol);
-    if (target) {
-      setUser(target);
-    }
+    cambiarA(USUARIOS_LOGISTICA.find((u) => u.rol === rol));
   };
 
   const hasPermission = (permiso: PermisoLogistica): boolean => {
