@@ -2,10 +2,13 @@ import { Router, type RequestHandler } from 'express';
 import { LogisticaController } from '../controllers/logistica.controller.js';
 import { requerirPermiso } from '../middleware/auth.middleware.js';
 import { createAuthRouter } from './auth.routes.js';
+import type { ModoAuth } from '../config/auth.config.js';
 
 export interface OpcionesLogisticaRouter {
   /** Middleware de autenticación (crearAutenticar). Obligatorio: no hay rutas sin identificación. */
   autenticar: RequestHandler;
+  /** AUTH_MODO: el selector de usuarios simulados solo existe en 'simulado' */
+  modoAuth: ModoAuth;
   controller?: LogisticaController;
 }
 
@@ -17,7 +20,7 @@ export function createLogisticaRouter(opciones: OpcionesLogisticaRouter): Router
   router.use(opciones.autenticar);
 
   // Sub-router de autenticación y gestión de roles
-  router.use('/auth', createAuthRouter());
+  router.use('/auth', createAuthRouter({ modo: opciones.modoAuth }));
 
   // 1. Pedidos disponibles y estado de picking
   router.get('/pedidos-pendientes', ctrl.getPedidosPendientes);

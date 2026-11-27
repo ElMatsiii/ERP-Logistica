@@ -1,4 +1,4 @@
-import express, { type Express } from 'express';
+import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import type { ConfigAuth } from './config/auth.config.js';
 import type { LogisticaController } from './controllers/logistica.controller.js';
@@ -6,6 +6,7 @@ import { obtenerClienteRrhh, verificarRrhhConLimite, type ClienteRrhh } from './
 import { checkDatabaseConnection } from './lib/prisma.js';
 import { crearAutenticar } from './middleware/auth.middleware.js';
 import { createLogisticaRouter } from './routes/logistica.routes.js';
+import { createSesionRouter } from './routes/sesion.routes.js';
 import { SesionService } from './services/sesion.service.js';
 
 export interface OpcionesApp {
@@ -64,12 +65,32 @@ export function crearApp(opciones: OpcionesApp): Express {
     });
   });
 
+  // Sesión: POST /api/auth/login es público; GET /api/auth/me exige autenticación
+  app.use('/api/auth', createSesionRouter({ sesion, autenticar }));
+
   // Rutas de logística: todas exigen identificación (autenticar)
-  app.use('/api/logistica', createLogisticaRouter({ autenticar, controller: opciones.controller }));
+  app.use(
+    '/api/logistica',
+    createLogisticaRouter({ autenticar, modoAuth: opciones.configAuth.modo, controller: opciones.controller })
+  );
 
   // Manejador 404
   app.use((req, res) => {
     res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.originalUrl}` });
+  });
+
+  // JSON mal formado u otros errores no controlados: respuesta JSON, sin exponer detalles ni el cuerpo recibido
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(err);
+    const e = err as { type?: string; status?: number };
+    if (e?.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'El cuerpo de la petición no es JSON válido' });
+    }
+    if (e?.type === 'entity.too.large') {
+      return res.status(413).json({ error: 'El cuerpo de la petición es demasiado grande' });
+    }
+    console.error('[ERROR] Error no controlado:', (err as Error)?.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   });
 
   return app;

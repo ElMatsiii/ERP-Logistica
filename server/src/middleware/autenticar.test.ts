@@ -8,6 +8,8 @@ import { crearApp } from '../app.js';
 import type { ConfigAuth } from '../config/auth.config.js';
 import type { LogisticaController } from '../controllers/logistica.controller.js';
 import { ClienteRrhhSimulado, EMPLEADOS_SIMULADOS as E } from '../integrations/rrhh/cliente-simulado.js';
+import { CONTRASENA_DEMO } from '../integrations/rrhh/cliente-simulado.js';
+import { MENSAJE_DATOS_LOGIN } from '../controllers/sesion.controller.js';
 import { MENSAJES_AUTH, SesionService } from '../services/sesion.service.js';
 import { MENSAJES_IDENTIFICACION } from './auth.middleware.js';
 
@@ -64,14 +66,17 @@ async function tokenDe(idEmpleado: number): Promise<string> {
 }
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
 
-async function pedir(s: Servidor, metodo: string, ruta: string, headers: Record<string, string> = {}) {
+async function pedir(s: Servidor, metodo: string, ruta: string, headers: Record<string, string> = {}, cuerpo: unknown = {}) {
   const res = await fetch(`${s.url}${ruta}`, {
     method: metodo,
     headers: { 'Content-Type': 'application/json', ...headers },
-    body: metodo === 'GET' ? undefined : '{}',
+    body: metodo === 'GET' ? undefined : typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo),
   });
   return { status: res.status, body: (await res.json()) as any };
 }
+
+const login = (s: Servidor, email: unknown, password: unknown) =>
+  pedir(s, 'POST', '/api/auth/login', {}, { email, password });
 
 describe('HTTP · AUTH_MODO=jwt', () => {
   let s: Servidor;
@@ -199,6 +204,105 @@ describe('HTTP · AUTH_MODO=jwt', () => {
       assert.equal(status, 200);
     });
   });
+
+  describe('POST /api/auth/login (público)', () => {
+    it('login correcto → { accessToken, usuario } sin datos sensibles; el token sirve en las rutas', async () => {
+      const { status, body } = await login(s, 'eparedes@lesgo.test', CONTRASENA_DEMO);
+      assert.equal(status, 200);
+      assert.deepEqual(Object.keys(body).sort(), ['accessToken', 'usuario']);
+      assert.equal(body.usuario.id_empleado, E.RECEPCION);
+      assert.equal(body.usuario.rol, 'OPERADOR_RECEPCION');
+      assert.doesNotMatch(JSON.stringify(body.usuario), /password|\$2[aby]\$/);
+
+      const payload = jwt.verify(body.accessToken, SECRETO, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      assert.equal(payload.sub, E.RECEPCION);
+      assert.equal(payload.source, 'db');
+
+      assert.equal((await pedir(s, 'POST', '/api/logistica/recepciones', bearer(body.accessToken))).status, 200);
+      assert.equal((await pedir(s, 'POST', '/api/logistica/guias', bearer(body.accessToken))).status, 403);
+    });
+
+    it('contraseña incorrecta y email inexistente → 401 con el mismo mensaje', async () => {
+      for (const [email, password] of [['eparedes@lesgo.test', 'mala'], ['nadie@lesgo.test', CONTRASENA_DEMO]]) {
+        const { status, body } = await login(s, email, password);
+        assert.equal(status, 401);
+        assert.deepEqual(body, { error: MENSAJES_AUTH.CREDENCIALES_INVALIDAS });
+      }
+    });
+
+    it('usuario bloqueado y empleado inactivo → 401 "La cuenta no está activa"', async () => {
+      for (const email of ['dfuentes@lesgo.test', 'pvera@lesgo.test']) {
+        const { status, body } = await login(s, email, CONTRASENA_DEMO);
+        assert.equal(status, 401, email);
+        assert.equal(body.error, MENSAJES_AUTH.CUENTA_NO_ACTIVA);
+      }
+    });
+
+    it('sin rol de Logística → 403', async () => {
+      const { status, body } = await login(s, 'cherrera@lesgo.test', CONTRASENA_DEMO);
+      assert.equal(status, 403);
+      assert.equal(body.error, MENSAJES_AUTH.SIN_ACCESO_LOGISTICA);
+    });
+
+    it('faltan email o contraseña, o no son texto → 400', async () => {
+      const cuerpos = [{}, { email: 'eparedes@lesgo.test' }, { password: CONTRASENA_DEMO }, { email: '  ', password: 'x' }, { email: 1, password: 2 }];
+      for (const cuerpo of cuerpos) {
+        const { status, body } = await pedir(s, 'POST', '/api/auth/login', {}, cuerpo);
+        assert.equal(status, 400, JSON.stringify(cuerpo));
+        assert.equal(body.error, MENSAJE_DATOS_LOGIN);
+      }
+    });
+
+    it('JSON mal formado → 400 en JSON, sin devolver lo enviado', async () => {
+      const { status, body } = await pedir(s, 'POST', '/api/auth/login', {}, '{"email": "a@b.test", "password": "secreta"');
+      assert.equal(status, 400);
+      assert.equal(body.error, 'El cuerpo de la petición no es JSON válido');
+      assert.doesNotMatch(JSON.stringify(body), /secreta/);
+    });
+  });
+
+  describe('GET /api/auth/me', () => {
+    it('sin token → 401', async () => {
+      const { status, body } = await pedir(s, 'GET', '/api/auth/me');
+      assert.equal(status, 401);
+      assert.equal(body.error, MENSAJES_IDENTIFICACION.SIN_TOKEN);
+    });
+
+    it('con el token del login → { autenticado, usuario }', async () => {
+      const { body: sesion } = await login(s, 'mpizarro@lesgo.test', CONTRASENA_DEMO);
+      const { status, body } = await pedir(s, 'GET', '/api/auth/me', bearer(sesion.accessToken));
+      assert.equal(status, 200);
+      assert.equal(body.autenticado, true);
+      assert.deepEqual(body.usuario, sesion.usuario);
+    });
+
+    it('acepta un token emitido por el portal de RRHH (inicio de sesión único)', async () => {
+      const tokenRrhh = jwt.sign(
+        { sub: E.DESPACHO, username: 'cgomez@lesgo.test', role: 'LOG_DESPACHO', employeeId: E.DESPACHO, source: 'db' },
+        SECRETO,
+        { algorithm: 'HS256', expiresIn: '8h' }
+      );
+      const { status, body } = await pedir(s, 'GET', '/api/auth/me', bearer(tokenRrhh));
+      assert.equal(status, 200);
+      assert.equal(body.usuario.rol, 'OPERADOR_DESPACHO');
+    });
+  });
+
+  describe('selector de usuarios simulados desactivado en modo jwt', () => {
+    it('/api/logistica/auth/usuarios y /login → 404, aun con un token válido', async () => {
+      const token = await tokenDe(E.COORDINADOR);
+      assert.equal((await pedir(s, 'GET', '/api/logistica/auth/usuarios', bearer(token))).status, 404);
+      const { status, body } = await pedir(s, 'POST', '/api/logistica/auth/login', bearer(token), { id_empleado: E.COORDINADOR });
+      assert.equal(status, 404);
+      assert.match(body.error, /POST \/api\/auth\/login/);
+    });
+
+    it('/api/logistica/auth/roles y /me siguen disponibles con token', async () => {
+      const token = await tokenDe(E.COORDINADOR);
+      assert.equal((await pedir(s, 'GET', '/api/logistica/auth/roles', bearer(token))).status, 200);
+      assert.equal((await pedir(s, 'GET', '/api/logistica/auth/me', bearer(token))).status, 200);
+    });
+  });
 });
 
 describe('HTTP · AUTH_MODO=simulado', () => {
@@ -246,12 +350,38 @@ describe('HTTP · AUTH_MODO=simulado', () => {
     assert.equal(status, 401);
   });
 
-  it('sin JWT_SECRET, un Bearer → 503 y las cabeceras siguen funcionando', async () => {
+  it('el selector de usuarios simulados sigue funcionando (con identificación)', async () => {
+    const cabecera = { 'x-user-id': String(E.COORDINADOR) };
+    const usuarios = await pedir(s, 'GET', '/api/logistica/auth/usuarios', cabecera);
+    assert.equal(usuarios.status, 200);
+    assert.ok(Array.isArray(usuarios.body));
+    const cambio = await pedir(s, 'POST', '/api/logistica/auth/login', cabecera, { id_empleado: E.RECEPCION });
+    assert.equal(cambio.status, 200);
+    assert.equal(cambio.body.usuario.rol, 'OPERADOR_RECEPCION');
+    assert.equal((await pedir(s, 'GET', '/api/logistica/auth/usuarios')).status, 401);
+  });
+
+  it('POST /api/auth/login también funciona en modo simulado', async () => {
+    const { status, body } = await login(s, 'cgomez@lesgo.test', CONTRASENA_DEMO);
+    assert.equal(status, 200);
+    assert.equal((await pedir(s, 'GET', '/api/auth/me', bearer(body.accessToken))).body.usuario.id_empleado, E.DESPACHO);
+  });
+
+  it('GET /api/auth/me acepta x-user-* en modo simulado', async () => {
+    const { status, body } = await pedir(s, 'GET', '/api/auth/me', { 'x-user-id': String(E.RECEPCION) });
+    assert.equal(status, 200);
+    assert.equal(body.usuario.rol, 'OPERADOR_RECEPCION');
+  });
+
+  it('sin JWT_SECRET: login y Bearer → 503; las cabeceras siguen funcionando', async () => {
     const sinSecreto = await levantar({ ...CONFIG_SIMULADO, jwtSecret: null });
     try {
       const conToken = await pedir(sinSecreto, 'GET', '/api/logistica/auth/me', bearer(await tokenDe(E.DESPACHO)));
       assert.equal(conToken.status, 503);
       assert.equal(conToken.body.error, MENSAJES_AUTH.JWT_NO_CONFIGURADO);
+      const conLogin = await login(sinSecreto, 'cgomez@lesgo.test', CONTRASENA_DEMO);
+      assert.equal(conLogin.status, 503);
+      assert.equal(conLogin.body.error, MENSAJES_AUTH.JWT_NO_CONFIGURADO);
       const conCabecera = await pedir(sinSecreto, 'GET', '/api/logistica/auth/me', { 'x-user-id': String(E.DESPACHO) });
       assert.equal(conCabecera.status, 200);
     } finally {
