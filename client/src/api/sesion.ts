@@ -78,6 +78,67 @@ export function suscribirCambioSesion(fn: () => void): () => void {
   return () => alCambiar.delete(fn);
 }
 
+/* =========================================================================
+ * TOKEN DEL PORTAL DE RRHH (#token=<jwt>)
+ * El portal redirige a Logística con el token en el fragmento de la URL. El fragmento nunca viaja al
+ * servidor ni en el Referer; igual se borra de inmediato para que no quede en la barra ni en el historial.
+ * ========================================================================= */
+
+export type ResultadoTokenPortal = 'ninguno' | 'aplicado' | 'invalido';
+
+let resultadoPortal: ResultadoTokenPortal | undefined;
+
+/** Un JWT: tres partes base64url separadas por punto, de tamaño razonable */
+const FORMATO_JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const LARGO_MAXIMO_TOKEN = 8192;
+
+/**
+ * Lee #token=<jwt> UNA sola vez (al cargar la app, antes de cualquier petición), lo quita de la URL con
+ * history.replaceState y, si tiene formato de JWT, lo guarda como sesión (reemplaza la que hubiera).
+ * El servidor lo valida después con GET /api/auth/me. Llamadas siguientes devuelven el mismo resultado.
+ */
+export function aplicarTokenDelPortal(): ResultadoTokenPortal {
+  if (resultadoPortal !== undefined) return resultadoPortal;
+  resultadoPortal = 'ninguno';
+  try {
+    const hash = window.location.hash;
+    if (hash.length < 2) return resultadoPortal;
+    const params = new URLSearchParams(hash.slice(1));
+    if (!params.has('token')) return resultadoPortal;
+
+    const token = (params.get('token') ?? '').trim();
+    params.delete('token');
+    const resto = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${window.location.search}${resto ? `#${resto}` : ''}`
+    );
+
+    if (token.length <= LARGO_MAXIMO_TOKEN && FORMATO_JWT.test(token)) {
+      guardarSesion({ tipo: 'token', token });
+      resultadoPortal = 'aplicado';
+    } else {
+      // Llegó algo que no es un token: no se usa, y tampoco se conserva la sesión anterior (puede ser de otra persona)
+      borrarSesion();
+      resultadoPortal = 'invalido';
+    }
+  } catch {
+    // Sin acceso a location/history: se sigue sin token del portal
+  }
+  return resultadoPortal;
+}
+
+/** Resultado de aplicarTokenDelPortal mientras no se haya validado; 'ninguno' después de marcarlo como usado. */
+export function resultadoTokenDelPortal(): ResultadoTokenPortal {
+  return resultadoPortal ?? 'ninguno';
+}
+
+/** Tras validar (o descartar) el token del portal, los mensajes siguientes vuelven a ser los generales. */
+export function marcarTokenDelPortalUsado(): void {
+  resultadoPortal = 'ninguno';
+}
+
 /** El AuthContext registra aquí qué hacer ante un 401 (cerrar sesión y volver al login). */
 export function registrarManejadorNoAutorizado(fn: (() => void) | null): void {
   alNoAutorizado = fn;

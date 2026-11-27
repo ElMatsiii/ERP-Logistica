@@ -1,6 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { UsuarioLogistica, RolConfig, RolLogistica, PermisoLogistica, ConfigAuthPublica } from '../types';
-import { borrarSesion, guardarSesion, leerSesion, registrarManejadorNoAutorizado } from '../api/sesion';
+import {
+  borrarSesion,
+  guardarSesion,
+  leerSesion,
+  marcarTokenDelPortalUsado,
+  registrarManejadorNoAutorizado,
+  resultadoTokenDelPortal,
+} from '../api/sesion';
 import { ErrorApi } from '../api/logisticaApi';
 import { obtenerConfigAuth, obtenerUsuarioActual } from '../api/authApi';
 import { PantallaAcceso } from '../components/PantallaAcceso';
@@ -120,6 +127,12 @@ interface SesionContextType {
 const SesionContext = createContext<SesionContextType | undefined>(undefined);
 
 const AVISO_SESION_EXPIRADA: Aviso = { tipo: 'info', texto: 'Tu sesión expiró o ya no es válida. Inicia sesión nuevamente.' };
+const AVISO_PORTAL_INVALIDO: Aviso = {
+  tipo: 'info',
+  texto: 'La sesión del portal no es válida o expiró. Vuelve a ingresar desde el portal del ERP.',
+};
+/** Mensaje del servidor para un token inválido o expirado (MENSAJES_AUTH.SESION_INVALIDA) */
+const MENSAJE_SERVIDOR_SESION_INVALIDA = 'Sesión inválida o expirada';
 
 /** Errores que indican que el servidor no está disponible (no son culpa de la sesión) */
 const esErrorDeConexion = (err: unknown) => err instanceof ErrorApi && (err.status === 0 || err.status >= 500);
@@ -185,7 +198,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (cancelado) return;
       setConfig(cfg);
 
+      // ¿Se llegó desde el portal de RRHH con #token? (main.tsx ya lo leyó, lo guardó y lo quitó de la URL)
+      const portal = resultadoTokenDelPortal();
+      if (portal === 'invalido') {
+        marcarTokenDelPortalUsado();
+        logout(AVISO_PORTAL_INVALIDO);
+        return;
+      }
+
       const sesion = leerSesion();
+      if (portal === 'aplicado' && !cfg.acepta_tokens) {
+        marcarTokenDelPortalUsado();
+        logout({ tipo: 'error', texto: 'El servidor de Logística no puede validar la sesión del portal (falta configurar JWT_SECRET).' });
+        return;
+      }
+
       const sesionUtilizable =
         sesion !== null &&
         // Una sesión simulada no sirve si el servidor está en modo jwt; un token no sirve si el servidor no puede verificarlo
@@ -201,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const actual = await obtenerUsuarioActual();
         if (cancelado) return;
+        marcarTokenDelPortalUsado();
         setUsuario(actual);
         setAviso(null);
         setEstado('autenticado');
@@ -211,10 +239,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAviso({ tipo: 'error', texto: (err as Error).message });
           setEstado('sin_conexion');
         } else {
-          // 401 / 403: la sesión guardada ya no sirve. Se muestra el motivo que da el servidor
-          // ("Sesión inválida o expirada", "La cuenta no está activa", "No tienes acceso al módulo de Logística")
+          // 401 / 403: la sesión ya no sirve. Se muestra el motivo que da el servidor
+          // ("La cuenta no está activa", "No tienes acceso al módulo de Logística"); si el token
+          // simplemente no es válido y venía del portal, se dice así.
+          marcarTokenDelPortalUsado();
           const status = err instanceof ErrorApi ? err.status : 0;
-          const texto = err instanceof ErrorApi && err.message ? err.message : AVISO_SESION_EXPIRADA.texto;
+          const mensaje = err instanceof ErrorApi ? err.message : '';
+          const generico = !mensaje || mensaje === MENSAJE_SERVIDOR_SESION_INVALIDA;
+          const texto = generico
+            ? portal === 'aplicado'
+              ? AVISO_PORTAL_INVALIDO.texto
+              : mensaje || AVISO_SESION_EXPIRADA.texto
+            : mensaje;
           logout({ tipo: status === 403 ? 'error' : 'info', texto });
         }
       }
