@@ -107,9 +107,9 @@ export class AuthService {
     );
   }
 
-  getUsuarioPorRol(rol: RolLogistica): UsuarioLogistica {
-    const user = USUARIOS_LOGISTICA.find((u) => u.rol === rol);
-    return user || USUARIOS_LOGISTICA[0];
+  /** Usuario simulado con ese rol. Un rol desconocido devuelve undefined (nunca un usuario por defecto). */
+  getUsuarioPorRol(rol: RolLogistica): UsuarioLogistica | undefined {
+    return USUARIOS_LOGISTICA.find((u) => u.rol === rol);
   }
 
   validarPermiso(usuario: UsuarioLogistica, permiso: PermisoLogistica): boolean {

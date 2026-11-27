@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { authService, USUARIOS_LOGISTICA } from '../services/auth.service.js';
+import { authService } from '../services/auth.service.js';
 import { RolLogistica } from '../types/auth.types.js';
 
 export class AuthController {
@@ -32,7 +32,11 @@ export class AuthController {
    */
   getUsuarioActual = (req: Request, res: Response) => {
     try {
-      const usuario = req.usuario || USUARIOS_LOGISTICA[0];
+      // Sin usuario por defecto: si no hay identificación, 401
+      const usuario = req.usuario;
+      if (!usuario) {
+        return res.status(401).json({ error: 'No autenticado: se requiere identificación de usuario.' });
+      }
       res.json({
         autenticado: true,
         usuario,

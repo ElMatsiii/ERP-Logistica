@@ -1,8 +1,6 @@
-import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import { createLogisticaRouter } from './routes/logistica.routes.js';
+import { crearApp } from './app.js';
 import { checkDatabaseConnection } from './lib/prisma.js';
 import { obtenerClienteInventario } from './integrations/inventario/index.js';
 import { obtenerClienteRrhh, verificarRrhhConLimite } from './integrations/rrhh/index.js';
@@ -24,52 +22,10 @@ try {
   throw error;
 }
 
-const app = express();
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-// Middleware de CORS
-app.use(
-  cors({
-    origin: [CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    credentials: true,
-  })
-);
-
-app.use(express.json());
-
-// Logger de peticiones en consola
-app.use((req, res, next) => {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
-  next();
-});
-
-// Ruta de comprobación de salud
-app.get('/api/health', async (req, res) => {
-  // RRHH nunca hace fallar ni colgar el health: verificarRrhhConLimite no lanza y corta a los 3 s
-  const [dbOk, rrhh] = await Promise.all([
-    checkDatabaseConnection(),
-    verificarRrhhConLimite(obtenerClienteRrhh()),
-  ]);
-  res.json({
-    status: 'ok',
-    module: 'LesGo ERP - Módulo Logística y Transporte',
-    schema: 'logistica',
-    timestamp: new Date().toISOString(),
-    database: dbOk ? 'conectado (Neon PostgreSQL - esquema logistica)' : 'sin_conexion_pg',
-    rrhh,
-  });
-});
-
-// Montaje de rutas de logística
-app.use('/api/logistica', createLogisticaRouter());
-
-// Manejador 404
-app.use((req, res) => {
-  res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.originalUrl}` });
-});
+const app = crearApp({ configAuth, clientUrl: CLIENT_URL });
 
 // Iniciar servidor
 app.listen(PORT, async () => {
@@ -79,7 +35,7 @@ app.listen(PORT, async () => {
   console.log(`[INFO] Autenticación: AUTH_MODO=${configAuth.modo} (token válido por ${configAuth.jwtExpiresInSeg / 3600} h)`);
   for (const advertencia of configAuth.advertencias) console.warn(`[WARN] ${advertencia}`);
   console.log('======================================================');
-  
+
   const dbOk = await checkDatabaseConnection();
   if (dbOk) {
     console.log('[OK] Conexión con PostgreSQL (Neon - esquema "logistica") verificada exitosamente.');

@@ -1,14 +1,20 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { LogisticaController } from '../controllers/logistica.controller.js';
-import { identificarUsuario, requerirPermiso } from '../middleware/auth.middleware.js';
+import { requerirPermiso } from '../middleware/auth.middleware.js';
 import { createAuthRouter } from './auth.routes.js';
 
-export function createLogisticaRouter(controller?: LogisticaController): Router {
-  const router = Router();
-  const ctrl = controller || new LogisticaController();
+export interface OpcionesLogisticaRouter {
+  /** Middleware de autenticación (crearAutenticar). Obligatorio: no hay rutas sin identificación. */
+  autenticar: RequestHandler;
+  controller?: LogisticaController;
+}
 
-  // Middleware global de identificación de usuario y roles
-  router.use(identificarUsuario);
+export function createLogisticaRouter(opciones: OpcionesLogisticaRouter): Router {
+  const router = Router();
+  const ctrl = opciones.controller || new LogisticaController();
+
+  // Todas las rutas de logística exigen un usuario autenticado (sin usuario por defecto)
+  router.use(opciones.autenticar);
 
   // Sub-router de autenticación y gestión de roles
   router.use('/auth', createAuthRouter());

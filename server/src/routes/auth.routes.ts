@@ -1,12 +1,10 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
-import { identificarUsuario } from '../middleware/auth.middleware.js';
 
+/** Se monta dentro de /api/logistica, que ya aplica el middleware autenticar. */
 export function createAuthRouter(): Router {
   const router = Router();
   const ctrl = new AuthController();
-
-  router.use(identificarUsuario);
 
   // Listado de roles del sistema
   router.get('/roles', ctrl.getRoles);

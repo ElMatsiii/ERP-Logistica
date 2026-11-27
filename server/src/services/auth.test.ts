@@ -102,16 +102,47 @@ describe('ELT-35 · Gestión de Usuarios y Roles (RBAC Logística y Transporte)'
       assert.equal(req.usuario?.username, 'cgomez');
     });
 
-    it('aplica Coordinador por defecto si no se especifican cabeceras (compatibilidad hacia atrás)', () => {
-      const req: any = { headers: {} };
-      const res: any = {};
-      let called = false;
-      const next = () => { called = true; };
+    /** res falso que registra status y cuerpo */
+    const resFalso = () => {
+      const r: any = { statusSent: 0, bodySent: null };
+      r.status = (code: number) => { r.statusSent = code; return r; };
+      r.json = (body: any) => { r.bodySent = body; return r; };
+      return r;
+    };
 
-      identificarUsuario(req, res, next);
-      assert.ok(called);
-      assert.equal(req.usuario?.rol, 'COORDINADOR_LOGISTICA');
-      assert.equal(req.usuario?.nombre, 'Maximiliano Pizarro');
+    it('sin cabeceras responde 401 (ya no hay Coordinador por defecto)', () => {
+      const req: any = { headers: {} };
+      const res = resFalso();
+      let called = false;
+
+      identificarUsuario(req, res, () => { called = true; });
+      assert.equal(called, false);
+      assert.equal(res.statusSent, 401);
+      assert.match(res.bodySent.error, /No autenticado/);
+      assert.equal(req.usuario, undefined);
+    });
+
+    it('con un id, username o rol desconocidos responde 401 (no cae en el Coordinador)', () => {
+      const casos = [
+        { 'x-user-id': '999999' },
+        { 'x-user-id': 'abc' },
+        { 'x-user-username': 'nadie' },
+        { 'x-user-role': 'ROL_INVENTADO' },
+        { 'x-user-id': '999999', 'x-user-role': 'ADMIN' },
+      ];
+      for (const headers of casos) {
+        const req: any = { headers };
+        const res = resFalso();
+        let called = false;
+        identificarUsuario(req, res, () => { called = true; });
+        assert.equal(called, false, JSON.stringify(headers));
+        assert.equal(res.statusSent, 401, JSON.stringify(headers));
+        assert.equal(req.usuario, undefined);
+      }
+    });
+
+    it('getUsuarioPorRol con un rol desconocido devuelve undefined', () => {
+      assert.equal(authService.getUsuarioPorRol('ADMIN' as any), undefined);
     });
 
     it('bloquea con 403 Forbidden a OPERADOR_RECEPCION cuando intenta emitir guía', () => {
