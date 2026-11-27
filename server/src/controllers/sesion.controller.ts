@@ -1,11 +1,31 @@
 import type { Request, Response } from 'express';
+import type { ConfigAuth, ModoAuth } from '../config/auth.config.js';
 import { AuthError, type SesionService } from '../services/sesion.service.js';
 
 export const MENSAJE_DATOS_LOGIN = 'Debes indicar email y contraseña';
 
-/** POST /api/auth/login y GET /api/auth/me. Nunca registra la contraseña ni el cuerpo de la petición. */
+/** Respuesta pública de GET /api/auth/config: solo cómo se puede iniciar sesión, nada sensible. */
+export interface ConfigAuthPublica {
+  modo: ModoAuth;
+  /** true si JWT_SECRET está configurado (POST /api/auth/login disponible) */
+  login_con_contrasena: boolean;
+}
+
+/** GET /api/auth/config, POST /api/auth/login y GET /api/auth/me. Nunca registra la contraseña ni el cuerpo de la petición. */
 export class SesionController {
-  constructor(private readonly sesion: SesionService) {}
+  constructor(
+    private readonly sesion: SesionService,
+    private readonly configAuth: Pick<ConfigAuth, 'modo' | 'jwtSecret'>
+  ) {}
+
+  /** Público: el cliente lo usa para decidir qué pantalla de inicio mostrar. */
+  config = (_req: Request, res: Response) => {
+    const respuesta: ConfigAuthPublica = {
+      modo: this.configAuth.modo,
+      login_con_contrasena: this.configAuth.jwtSecret !== null,
+    };
+    res.json(respuesta);
+  };
 
   login = async (req: Request, res: Response) => {
     const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown };

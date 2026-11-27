@@ -261,6 +261,21 @@ describe('HTTP · AUTH_MODO=jwt', () => {
     });
   });
 
+  describe('GET /api/auth/config (público)', () => {
+    it('responde el modo sin token y solo con las claves públicas', async () => {
+      const { status, body } = await pedir(s, 'GET', '/api/auth/config');
+      assert.equal(status, 200);
+      assert.deepEqual(body, { modo: 'jwt', login_con_contrasena: true });
+    });
+
+    it('nunca expone el secreto ni datos de configuración', async () => {
+      const { body } = await pedir(s, 'GET', '/api/auth/config', bearer('basura'));
+      const json = JSON.stringify(body);
+      assert.ok(!json.includes(SECRETO));
+      assert.doesNotMatch(json, /secret|expires|advertencias/i);
+    });
+  });
+
   describe('GET /api/auth/me', () => {
     it('sin token → 401', async () => {
       const { status, body } = await pedir(s, 'GET', '/api/auth/me');
@@ -373,9 +388,18 @@ describe('HTTP · AUTH_MODO=simulado', () => {
     assert.equal(body.usuario.rol, 'OPERADOR_RECEPCION');
   });
 
+  it('GET /api/auth/config informa modo simulado, sin identificación', async () => {
+    const { status, body } = await pedir(s, 'GET', '/api/auth/config');
+    assert.equal(status, 200);
+    assert.equal(body.modo, 'simulado');
+    assert.equal(body.login_con_contrasena, true);
+  });
+
   it('sin JWT_SECRET: login y Bearer → 503; las cabeceras siguen funcionando', async () => {
     const sinSecreto = await levantar({ ...CONFIG_SIMULADO, jwtSecret: null });
     try {
+      const config = await pedir(sinSecreto, 'GET', '/api/auth/config');
+      assert.deepEqual(config.body, { modo: 'simulado', login_con_contrasena: false });
       const conToken = await pedir(sinSecreto, 'GET', '/api/logistica/auth/me', bearer(await tokenDe(E.DESPACHO)));
       assert.equal(conToken.status, 503);
       assert.equal(conToken.body.error, MENSAJES_AUTH.JWT_NO_CONFIGURADO);

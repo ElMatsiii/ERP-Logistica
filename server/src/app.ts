@@ -65,8 +65,8 @@ export function crearApp(opciones: OpcionesApp): Express {
     });
   });
 
-  // Sesión: POST /api/auth/login es público; GET /api/auth/me exige autenticación
-  app.use('/api/auth', createSesionRouter({ sesion, autenticar }));
+  // Sesión: GET /api/auth/config y POST /api/auth/login son públicos; GET /api/auth/me exige autenticación
+  app.use('/api/auth', createSesionRouter({ sesion, autenticar, configAuth: opciones.configAuth }));
 
   // Rutas de logística: todas exigen identificación (autenticar)
   app.use(
