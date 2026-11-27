@@ -6,9 +6,23 @@ import { createLogisticaRouter } from './routes/logistica.routes.js';
 import { checkDatabaseConnection } from './lib/prisma.js';
 import { obtenerClienteInventario } from './integrations/inventario/index.js';
 import { obtenerClienteRrhh, verificarRrhhConLimite } from './integrations/rrhh/index.js';
+import { ConfigAuthError, leerConfigAuth, type ConfigAuth } from './config/auth.config.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+
+// Configuración de autenticación: si es inválida (p. ej. AUTH_MODO=jwt sin JWT_SECRET), no se arranca
+let configAuth: ConfigAuth;
+try {
+  configAuth = leerConfigAuth();
+} catch (error) {
+  if (error instanceof ConfigAuthError) {
+    console.error(`[ERROR] Configuración de autenticación inválida: ${error.message}`);
+    console.error('[ERROR] El servidor no se inicia. Revisa AUTH_MODO, JWT_SECRET y JWT_EXPIRES_IN en .env');
+    process.exit(1);
+  }
+  throw error;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -62,6 +76,8 @@ app.listen(PORT, async () => {
   console.log('======================================================');
   console.log(`[INFO] Servidor LesGo ERP (Logística) activo en: http://localhost:${PORT}`);
   console.log(`[INFO] Origen permitido CORS: ${CLIENT_URL}`);
+  console.log(`[INFO] Autenticación: AUTH_MODO=${configAuth.modo} (token válido por ${configAuth.jwtExpiresInSeg / 3600} h)`);
+  for (const advertencia of configAuth.advertencias) console.warn(`[WARN] ${advertencia}`);
   console.log('======================================================');
   
   const dbOk = await checkDatabaseConnection();
