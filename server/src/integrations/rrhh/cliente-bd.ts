@@ -53,6 +53,7 @@ interface FilaCuenta {
   estado_usuario: unknown;
   password_hash: string | null;
   roles: string[] | null;
+  cargo: string | null;
 }
 
 interface FilaEmpleado {
@@ -152,7 +153,8 @@ export class ClienteRrhhBd implements ClienteRrhh {
       Prisma.sql`
         SELECT e.id_empleado, e.rut, e.nombre, e.apellido, e.email,
                e.estado AS estado_empleado, u.estado AS estado_usuario, u.password_hash,
-               ${SQL_ROLES} AS roles
+               ${SQL_ROLES} AS roles,
+               ${SQL_CARGO} AS cargo
         FROM rrhh.usuario u
         JOIN rrhh.empleado e ON e.id_empleado = u.id_empleado
         WHERE ${condicion}
@@ -205,6 +207,7 @@ function aCuenta(f: FilaCuenta): CuentaRrhh {
     // Sin hash = no puede iniciar sesión (bcrypt.compare contra '' siempre falla)
     password_hash: f.password_hash ?? '',
     roles: f.roles ?? [],
+    cargo: f.cargo ?? null,
   };
 }
 

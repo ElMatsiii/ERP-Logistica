@@ -217,6 +217,7 @@ function aCuenta(e: EmpleadoSimulado): CuentaRrhh | null {
     estado_usuario: e.usuario.estado,
     password_hash: e.usuario.password_hash,
     roles: [...e.roles],
+    cargo: e.cargo,
   };
 }
 

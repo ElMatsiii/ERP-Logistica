@@ -24,6 +24,8 @@ export interface CuentaRrhh {
   password_hash: string;
   /** Nombres de rrhh.rol, ordenados por id_rol */
   roles: string[];
+  /** Cargo vigente (contrato activo → contrato_cargo → cargo), si existe */
+  cargo: string | null;
 }
 
 /** Datos públicos de un empleado (sin credenciales). */

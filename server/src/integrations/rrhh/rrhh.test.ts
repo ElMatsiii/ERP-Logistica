@@ -103,6 +103,7 @@ describe('RRHH · Cliente simulado', () => {
       assert.equal(cuenta?.id_empleado, E.DESPACHO);
       assert.equal(cuenta?.nombre, 'Carlos');
       assert.deepEqual(cuenta?.roles, ['LOG_DESPACHO']);
+      assert.equal(cuenta?.cargo, 'Encargado de Despacho e-Commerce');
       assert.equal(typeof cuenta?.password_hash, 'string');
     });
 
@@ -271,6 +272,7 @@ const FILA_CUENTA = {
   estado_usuario: 'Activo',
   password_hash: '$2a$10$hashdeprueba',
   roles: ['Asistente', 'LOG_DESPACHO'],
+  cargo: 'Operador de Picking',
 };
 
 const FILA_EMPLEADO = {
@@ -339,12 +341,19 @@ describe('RRHH · Cliente de BD (solo lectura)', () => {
         estado_usuario: 'activo',
         password_hash: '$2a$10$hashdeprueba',
         roles: ['Asistente', 'LOG_DESPACHO'],
+        cargo: 'Operador de Picking',
       });
+    });
+
+    it('la consulta de cuenta incluye el cargo vigente', async () => {
+      const { ejecutor, consultas } = ejecutorFalso([[]]);
+      await new ClienteRrhhBd(ejecutor).buscarCuentaPorId(301);
+      assert.match(sqlDe(consultas[0]), /rrhh\.contrato_cargo .* AS cargo/);
     });
 
     it('estados desconocidos o nulos se tratan como no activos', async () => {
       const { ejecutor } = ejecutorFalso([
-        [{ ...FILA_CUENTA, estado_empleado: 'suspendido', estado_usuario: null, roles: null, password_hash: null }],
+        [{ ...FILA_CUENTA, estado_empleado: 'suspendido', estado_usuario: null, roles: null, password_hash: null, cargo: null }],
         [{ ...FILA_CUENTA, estado_usuario: 'BLOQUEADO' }],
       ]);
       const cliente = new ClienteRrhhBd(ejecutor);
