@@ -10,6 +10,7 @@ export { ClienteRrhhBd } from './cliente-bd.js';
 export type { EjecutorSql } from './cliente-bd.js';
 export { ClienteRrhhSimulado, EMPLEADOS_SIMULADOS } from './cliente-simulado.js';
 export { rolLogisticaDesde, traducirRolRrhh, rolesRrhhPara } from './roles.js';
+export { verificarRrhhConLimite, LIMITE_HEALTH_RRHH_MS } from './salud.js';
 
 /**
  * Elige el cliente según RRHH_MODO:

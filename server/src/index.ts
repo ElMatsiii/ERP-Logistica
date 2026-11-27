@@ -5,6 +5,7 @@ import path from 'path';
 import { createLogisticaRouter } from './routes/logistica.routes.js';
 import { checkDatabaseConnection } from './lib/prisma.js';
 import { obtenerClienteInventario } from './integrations/inventario/index.js';
+import { obtenerClienteRrhh, verificarRrhhConLimite } from './integrations/rrhh/index.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
@@ -33,13 +34,18 @@ app.use((req, res, next) => {
 
 // Ruta de comprobación de salud
 app.get('/api/health', async (req, res) => {
-  const dbOk = await checkDatabaseConnection();
+  // RRHH nunca hace fallar ni colgar el health: verificarRrhhConLimite no lanza y corta a los 3 s
+  const [dbOk, rrhh] = await Promise.all([
+    checkDatabaseConnection(),
+    verificarRrhhConLimite(obtenerClienteRrhh()),
+  ]);
   res.json({
     status: 'ok',
     module: 'LesGo ERP - Módulo Logística y Transporte',
     schema: 'logistica',
     timestamp: new Date().toISOString(),
     database: dbOk ? 'conectado (Neon PostgreSQL - esquema logistica)' : 'sin_conexion_pg',
+    rrhh,
   });
 });
 
@@ -69,4 +75,12 @@ app.listen(PORT, async () => {
 
   // Muestra si se usará Inventario real o simulado (según INVENTARIO_API_URL)
   obtenerClienteInventario();
+
+  // Muestra si RRHH se lee de la BD (esquema rrhh) o se simula (según RRHH_MODO)
+  const rrhh = await verificarRrhhConLimite(obtenerClienteRrhh());
+  if (rrhh.ok) {
+    console.log(`[OK] RRHH disponible (modo ${rrhh.modo}).`);
+  } else {
+    console.warn(`[WARN] RRHH no disponible (modo ${rrhh.modo}): ${rrhh.error}`);
+  }
 });

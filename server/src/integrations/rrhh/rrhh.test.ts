@@ -7,6 +7,8 @@ import { RrhhError } from './errores.js';
 import { fechaCalendario, sumarDias } from './fechas.js';
 import { crearClienteRrhh, fijarClienteRrhh, obtenerClienteRrhh } from './index.js';
 import { rolLogisticaDesde } from './roles.js';
+import { verificarRrhhConLimite } from './salud.js';
+import type { ClienteRrhh } from './tipos.js';
 
 // Fecha fija para que los tests no dependan del día en que se ejecutan
 const HOY = new Date(2026, 10, 27, 10, 30); // 27-11-2026 10:30 hora local
@@ -478,5 +480,52 @@ describe('RRHH · Selección de cliente (RRHH_MODO)', () => {
     fijarClienteRrhh(null);
     assert.notEqual(obtenerClienteRrhh(), propio);
     fijarClienteRrhh(null);
+  });
+});
+
+describe('RRHH · Estado para /api/health (verificarRrhhConLimite)', () => {
+  /** Cliente cuyo verificarConexion se define en cada test */
+  const clienteCon = (verificar: ClienteRrhh['verificarConexion'], modo: ClienteRrhh['modo'] = 'bd'): ClienteRrhh =>
+    Object.assign(new ClienteRrhhSimulado({ empleados: [], ausencias: [] }), { modo, verificarConexion: verificar }) as ClienteRrhh;
+
+  it('modo simulado: ok', async () => {
+    assert.deepEqual(await verificarRrhhConLimite(new ClienteRrhhSimulado()), { modo: 'simulado', ok: true });
+  });
+
+  it('modo bd conectado: ok', async () => {
+    const { ejecutor } = ejecutorFalso([[{ ok: 1 }]]);
+    assert.deepEqual(await verificarRrhhConLimite(new ClienteRrhhBd(ejecutor)), { modo: 'bd', ok: true });
+  });
+
+  it('modo bd sin conexión: ok=false con el mensaje del cliente', async () => {
+    const { ejecutor } = ejecutorFalso([{ name: 'PrismaClientInitializationError' }]);
+    assert.deepEqual(await verificarRrhhConLimite(new ClienteRrhhBd(ejecutor)), {
+      modo: 'bd',
+      ok: false,
+      error: 'No se pudo conectar con la BD para leer RRHH',
+    });
+  });
+
+  it('si verificarConexion se queda colgado, responde ok=false al cumplirse el límite', async () => {
+    const colgado = clienteCon(() => new Promise(() => {}));
+    const inicio = Date.now();
+    const estado = await verificarRrhhConLimite(colgado, 50);
+    const demora = Date.now() - inicio;
+    assert.deepEqual(estado, { modo: 'bd', ok: false, error: 'RRHH no respondió en 50 ms' });
+    assert.ok(demora >= 40 && demora < 1000, `demoró ${demora} ms`);
+  });
+
+  it('si verificarConexion lanza (sincrónico o rechazo), no propaga el error', async () => {
+    const sincronico = clienteCon(() => {
+      throw new Error('detalle interno con secreto');
+    });
+    const rechazo = clienteCon(() => Promise.reject(new RrhhError({ tipo: 'SIN_PERMISO', mensaje: 'Sin permiso de lectura sobre el esquema rrhh', operacion: 'verificarConexion' })));
+    assert.deepEqual(await verificarRrhhConLimite(sincronico), { modo: 'bd', ok: false, error: 'Error inesperado al verificar RRHH' });
+    assert.deepEqual(await verificarRrhhConLimite(rechazo), { modo: 'bd', ok: false, error: 'Sin permiso de lectura sobre el esquema rrhh' });
+  });
+
+  it('una respuesta ok=false sin mensaje recibe uno genérico', async () => {
+    const caido = clienteCon(async () => ({ modo: 'bd', ok: false }));
+    assert.deepEqual(await verificarRrhhConLimite(caido), { modo: 'bd', ok: false, error: 'RRHH no está disponible' });
   });
 });
