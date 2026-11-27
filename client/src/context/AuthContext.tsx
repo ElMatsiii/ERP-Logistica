@@ -11,6 +11,7 @@ import {
 import { ErrorApi } from '../api/logisticaApi';
 import { obtenerConfigAuth, obtenerUsuarioActual } from '../api/authApi';
 import { PantallaAcceso } from '../components/PantallaAcceso';
+import { urlPortalRrhh } from '../config';
 
 export const ROLES_LOGISTICA: Record<RolLogistica, RolConfig> = {
   COORDINADOR_LOGISTICA: {
@@ -296,7 +297,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       usuarios: USUARIOS_LOGISTICA,
       switchUser: (id) => cambiarA(USUARIOS_LOGISTICA.find((u) => u.id_empleado === id)),
       switchRol: (rol) => cambiarA(USUARIOS_LOGISTICA.find((u) => u.rol === rol)),
-      logout: () => logout(),
+      // Cerrar sesión: borra la sesión local (y la caché). En jwt vuelve al portal de RRHH, donde se inicia sesión;
+      // en simulado (o si falta VITE_RRHH_PORTAL_URL) queda en la pantalla de acceso.
+      logout: () => {
+        const portal = urlPortalRrhh();
+        if (config.modo === 'jwt' && portal) {
+          logout();
+          window.location.assign(portal);
+          return;
+        }
+        logout({ tipo: 'info', texto: 'Cerraste sesión.' });
+      },
       hasPermission: (permiso) => usuario.permisos.includes(permiso),
       canAccessTab: (tab) => usuario.pestañas_permitidas.includes(tab),
     };
