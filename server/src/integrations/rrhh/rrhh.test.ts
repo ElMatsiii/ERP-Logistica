@@ -1,7 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { Prisma } from '@prisma/client';
 import { ClienteRrhhSimulado, EMPLEADOS_SIMULADOS as E } from './cliente-simulado.js';
+import { ClienteRrhhBd, type EjecutorSql } from './cliente-bd.js';
+import { RrhhError } from './errores.js';
 import { fechaCalendario, sumarDias } from './fechas.js';
+import { crearClienteRrhh, fijarClienteRrhh, obtenerClienteRrhh } from './index.js';
 import { rolLogisticaDesde } from './roles.js';
 
 // Fecha fija para que los tests no dependan del día en que se ejecutan
@@ -208,5 +212,271 @@ describe('RRHH · fechaCalendario', () => {
   it('formatea en fecha local YYYY-MM-DD', () => {
     assert.equal(fechaCalendario(new Date(2026, 0, 5, 23, 59)), '2026-01-05');
     assert.equal(fechaCalendario(sumarDias(new Date(2026, 11, 31), 1)), '2027-01-01');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cliente de BD: ejecutor SQL falso que registra cada consulta (no toca Neon)
+// ---------------------------------------------------------------------------
+type Respuesta = unknown[] | Error | Record<string, unknown>;
+
+function ejecutorFalso(respuestas: Respuesta[] = []) {
+  const consultas: Prisma.Sql[] = [];
+  const ejecutor: EjecutorSql = {
+    async $queryRaw<T>(query: Prisma.Sql): Promise<T> {
+      consultas.push(query);
+      const r = respuestas.shift() ?? [];
+      if (!Array.isArray(r)) throw r;
+      return r as T;
+    },
+  };
+  return { ejecutor, consultas };
+}
+
+const sqlDe = (q: Prisma.Sql) => q.sql.replace(/\s+/g, ' ').trim();
+
+const FILA_CUENTA = {
+  id_empleado: 301n,
+  rut: '15.432.908-2',
+  nombre: 'Carlos',
+  apellido: 'Gómez',
+  email: 'cgomez@lesgo.test',
+  estado_empleado: 'ACTIVO',
+  estado_usuario: 'Activo',
+  password_hash: '$2a$10$hashdeprueba',
+  roles: ['Asistente', 'LOG_DESPACHO'],
+};
+
+const FILA_EMPLEADO = {
+  id_empleado: 301,
+  rut: '15.432.908-2',
+  nombre: 'Carlos',
+  apellido: 'Gómez',
+  email: 'cgomez@lesgo.test',
+  estado: 'Activo',
+  roles: null,
+  cargo: 'Operador de Picking',
+};
+
+describe('RRHH · Cliente de BD (solo lectura)', () => {
+  it('se identifica como modo bd', () => {
+    assert.equal(new ClienteRrhhBd(ejecutorFalso().ejecutor).modo, 'bd');
+  });
+
+  describe('verificarConexion', () => {
+    it('consulta rrhh.rol y nunca rrhh.usuario', async () => {
+      const { ejecutor, consultas } = ejecutorFalso([[{ ok: 1 }]]);
+      const estado = await new ClienteRrhhBd(ejecutor).verificarConexion();
+      assert.deepEqual(estado, { modo: 'bd', ok: true });
+      assert.equal(consultas.length, 1);
+      assert.match(sqlDe(consultas[0]), /^SELECT 1 AS ok FROM rrhh\.rol LIMIT 1$/);
+      assert.doesNotMatch(sqlDe(consultas[0]), /usuario|password/i);
+    });
+
+    it('está ok aunque rrhh.rol no tenga filas', async () => {
+      const { ejecutor } = ejecutorFalso([[]]);
+      assert.equal((await new ClienteRrhhBd(ejecutor).verificarConexion()).ok, true);
+    });
+
+    it('no lanza si la BD falla: responde ok=false con el mensaje', async () => {
+      const caida = Object.assign(new Error('No se alcanza el servidor'), { name: 'PrismaClientInitializationError' });
+      const { ejecutor } = ejecutorFalso([caida]);
+      const estado = await new ClienteRrhhBd(ejecutor).verificarConexion();
+      assert.equal(estado.ok, false);
+      assert.equal(estado.modo, 'bd');
+      assert.equal(estado.error, 'No se pudo conectar con la BD para leer RRHH');
+    });
+  });
+
+  describe('buscarCuentaPorEmail', () => {
+    it('envía el email como parámetro, nunca dentro del texto SQL', async () => {
+      const malicioso = "x'; DROP TABLE rrhh.usuario; --@lesgo.test";
+      const { ejecutor, consultas } = ejecutorFalso([[FILA_CUENTA]]);
+      await new ClienteRrhhBd(ejecutor).buscarCuentaPorEmail(`  ${malicioso} `);
+      const q = consultas[0];
+      assert.deepEqual(q.values, [malicioso]);
+      assert.doesNotMatch(q.sql, /DROP/);
+      assert.match(sqlDe(q), /lower\(e\.email\) = lower\(\?\)/);
+      assert.match(sqlDe(q), /FROM rrhh\.usuario u JOIN rrhh\.empleado e/);
+    });
+
+    it('normaliza la fila: id numérico, estados en minúsculas y roles por id_rol', async () => {
+      const { ejecutor } = ejecutorFalso([[FILA_CUENTA]]);
+      const cuenta = await new ClienteRrhhBd(ejecutor).buscarCuentaPorEmail('cgomez@lesgo.test');
+      assert.deepEqual(cuenta, {
+        id_empleado: 301,
+        rut: '15.432.908-2',
+        nombre: 'Carlos',
+        apellido: 'Gómez',
+        email: 'cgomez@lesgo.test',
+        estado_empleado: 'activo',
+        estado_usuario: 'activo',
+        password_hash: '$2a$10$hashdeprueba',
+        roles: ['Asistente', 'LOG_DESPACHO'],
+      });
+    });
+
+    it('estados desconocidos o nulos se tratan como no activos', async () => {
+      const { ejecutor } = ejecutorFalso([
+        [{ ...FILA_CUENTA, estado_empleado: 'suspendido', estado_usuario: null, roles: null, password_hash: null }],
+        [{ ...FILA_CUENTA, estado_usuario: 'BLOQUEADO' }],
+      ]);
+      const cliente = new ClienteRrhhBd(ejecutor);
+      const cuenta = await cliente.buscarCuentaPorEmail('cgomez@lesgo.test');
+      assert.equal(cuenta?.estado_empleado, 'inactivo');
+      assert.equal(cuenta?.estado_usuario, 'inactivo');
+      assert.deepEqual(cuenta?.roles, []);
+      assert.equal(cuenta?.password_hash, '');
+      assert.equal((await cliente.buscarCuentaPorEmail('cgomez@lesgo.test'))?.estado_usuario, 'bloqueado');
+    });
+
+    it('devuelve null sin filas, y no consulta si el email viene vacío', async () => {
+      const { ejecutor, consultas } = ejecutorFalso([[]]);
+      const cliente = new ClienteRrhhBd(ejecutor);
+      assert.equal(await cliente.buscarCuentaPorEmail('nadie@lesgo.test'), null);
+      assert.equal(await cliente.buscarCuentaPorEmail('   '), null);
+      assert.equal(consultas.length, 1);
+    });
+  });
+
+  describe('buscarCuentaPorId', () => {
+    it('filtra por id_empleado como parámetro', async () => {
+      const { ejecutor, consultas } = ejecutorFalso([[FILA_CUENTA]]);
+      const cuenta = await new ClienteRrhhBd(ejecutor).buscarCuentaPorId(301);
+      assert.equal(cuenta?.id_empleado, 301);
+      assert.deepEqual(consultas[0].values, [301]);
+      assert.match(sqlDe(consultas[0]), /WHERE e\.id_empleado = \?/);
+    });
+
+    it('un id inválido devuelve null sin consultar', async () => {
+      const { ejecutor, consultas } = ejecutorFalso();
+      const cliente = new ClienteRrhhBd(ejecutor);
+      for (const id of [0, -1, 1.5, Number.NaN]) assert.equal(await cliente.buscarCuentaPorId(id), null);
+      assert.equal(consultas.length, 0);
+    });
+  });
+
+  describe('obtenerEmpleado y listarEmpleados', () => {
+    it('obtenerEmpleado no lee rrhh.usuario ni password_hash', async () => {
+      const { ejecutor, consultas } = ejecutorFalso([[FILA_EMPLEADO]]);
+      const emp = await new ClienteRrhhBd(ejecutor).obtenerEmpleado(301);
+      assert.deepEqual(emp, { ...FILA_EMPLEADO, estado: 'activo', roles: [] });
+      assert.doesNotMatch(sqlDe(consultas[0]), /rrhh\.usuario|password/i);
+      assert.match(sqlDe(consultas[0]), /rrhh\.contrato_cargo/);
+      assert.deepEqual(consultas[0].values, [301]);
+    });
+
+    it('obtenerEmpleado devuelve null si no existe', async () => {
+      const { ejecutor } = ejecutorFalso([[]]);
+      assert.equal(await new ClienteRrhhBd(ejecutor).obtenerEmpleado(999), null);
+    });
+
+    it('listarEmpleados pasa los filtros como parámetros', async () => {
+      const { ejecutor, consultas } = ejecutorFalso([[FILA_EMPLEADO], []]);
+      const cliente = new ClienteRrhhBd(ejecutor);
+      const lista = await cliente.listarEmpleados({ rol: ' LOG_DESPACHO ', soloActivos: true });
+      assert.equal(lista.length, 1);
+      assert.deepEqual(consultas[0].values, [true, 'LOG_DESPACHO', 'LOG_DESPACHO']);
+      assert.doesNotMatch(sqlDe(consultas[0]), /rrhh\.usuario|password/i);
+
+      await cliente.listarEmpleados();
+      assert.deepEqual(consultas[1].values, [false, null, null]);
+    });
+  });
+
+  describe('estaAusente', () => {
+    it('envía la fecha calendario local como parámetro y solo cuenta aprobada / en_curso', async () => {
+      const { ejecutor, consultas } = ejecutorFalso([[{ ausente: true }], [{ ausente: false }]]);
+      const cliente = new ClienteRrhhBd(ejecutor);
+      assert.equal(await cliente.estaAusente(302, HOY), true);
+      assert.equal(await cliente.estaAusente(302, HOY), false);
+      assert.deepEqual(consultas[0].values, [302, '2026-11-27']);
+      assert.match(sqlDe(consultas[0]), /IN \('aprobada', 'en_curso'\)/);
+      assert.match(sqlDe(consultas[0]), /FROM rrhh\.solicitud_ausencia/);
+    });
+
+    it('un id inválido no está ausente y no consulta; una fecha inválida lanza', async () => {
+      const { ejecutor, consultas } = ejecutorFalso();
+      const cliente = new ClienteRrhhBd(ejecutor);
+      assert.equal(await cliente.estaAusente(-5, HOY), false);
+      assert.equal(consultas.length, 0);
+      await assert.rejects(cliente.estaAusente(302, new Date('x')), TypeError);
+    });
+  });
+
+  it('todas las consultas son SELECT de solo lectura', async () => {
+    const { ejecutor, consultas } = ejecutorFalso();
+    const cliente = new ClienteRrhhBd(ejecutor);
+    await cliente.verificarConexion();
+    await cliente.buscarCuentaPorEmail('a@b.test');
+    await cliente.buscarCuentaPorId(1);
+    await cliente.obtenerEmpleado(1);
+    await cliente.listarEmpleados({ rol: 'LOG_DESPACHO', soloActivos: true });
+    await cliente.estaAusente(1, HOY);
+    assert.equal(consultas.length, 6);
+    for (const q of consultas) {
+      const sql = sqlDe(q);
+      assert.match(sql, /^SELECT /, sql);
+      assert.doesNotMatch(sql, /\b(insert|update|delete|drop|alter|truncate|create|grant|merge)\b/i, sql);
+    }
+  });
+
+  describe('errores tipados', () => {
+    const casos: [string, Record<string, unknown>, string][] = [
+      ['sin conexión', { name: 'PrismaClientInitializationError', message: 'sin red' }, 'SIN_CONEXION'],
+      ['P1001', { name: 'PrismaClientKnownRequestError', code: 'P1001' }, 'SIN_CONEXION'],
+      ['sin GRANT', { code: 'P2010', meta: { code: '42501', message: 'permission denied for schema rrhh' } }, 'SIN_PERMISO'],
+      ['tabla inexistente', { code: 'P2010', meta: { code: '42P01' } }, 'ESQUEMA_INVALIDO'],
+      ['columna inexistente', { code: 'P2010', meta: { code: '42703' } }, 'ESQUEMA_INVALIDO'],
+      ['otro error', { message: 'algo raro' }, 'ERROR_BD'],
+    ];
+
+    for (const [nombre, error, tipo] of casos) {
+      it(`${nombre} → ${tipo}`, async () => {
+        const { ejecutor } = ejecutorFalso([error]);
+        await assert.rejects(new ClienteRrhhBd(ejecutor).buscarCuentaPorEmail('secreto@lesgo.test'), (err: unknown) => {
+          assert.ok(err instanceof RrhhError);
+          assert.equal(err.tipo, tipo);
+          assert.equal(err.operacion, 'buscarCuentaPorEmail');
+          assert.doesNotMatch(err.message, /secreto/); // el mensaje nunca incluye valores de la consulta
+          assert.equal(err.cause, error);
+          return true;
+        });
+      });
+    }
+  });
+});
+
+describe('RRHH · Selección de cliente (RRHH_MODO)', () => {
+  it('RRHH_MODO=bd usa el cliente de BD con el ejecutor indicado', async () => {
+    const { ejecutor, consultas } = ejecutorFalso([[]]);
+    const cliente = crearClienteRrhh({ RRHH_MODO: ' BD ' }, ejecutor);
+    assert.ok(cliente instanceof ClienteRrhhBd);
+    assert.equal(cliente.modo, 'bd');
+    await cliente.verificarConexion();
+    assert.equal(consultas.length, 1);
+  });
+
+  it('RRHH_MODO=simulado usa el cliente simulado', () => {
+    assert.ok(crearClienteRrhh({ RRHH_MODO: 'simulado' }) instanceof ClienteRrhhSimulado);
+  });
+
+  it('vacío o inválido cae en simulado (nunca lee rrhh por accidente)', () => {
+    for (const RRHH_MODO of [undefined, '', '  ', 'real', 'produccion']) {
+      const { ejecutor, consultas } = ejecutorFalso();
+      const cliente = crearClienteRrhh({ RRHH_MODO }, ejecutor);
+      assert.equal(cliente.modo, 'simulado', `RRHH_MODO=${RRHH_MODO}`);
+      assert.equal(consultas.length, 0);
+    }
+  });
+
+  it('obtenerClienteRrhh reutiliza la instancia y fijarClienteRrhh permite reemplazarla', () => {
+    const propio = new ClienteRrhhSimulado({ empleados: [], ausencias: [] });
+    fijarClienteRrhh(propio);
+    assert.equal(obtenerClienteRrhh(), propio);
+    assert.equal(obtenerClienteRrhh(), propio);
+    fijarClienteRrhh(null);
+    assert.notEqual(obtenerClienteRrhh(), propio);
+    fijarClienteRrhh(null);
   });
 });
