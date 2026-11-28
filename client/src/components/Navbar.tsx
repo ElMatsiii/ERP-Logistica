@@ -13,7 +13,7 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { urlPortalRrhh } from '../config';
+import { colorAvatar, urlPortalRrhh } from '../config';
 import { RolLogistica } from '../types';
 
 interface NavTabsProps {
@@ -127,7 +127,7 @@ export const Navbar: React.FC = () => {
                 </div>
 
                 <div className="relative">
-                  <div className={`w-11 h-11 rounded-full text-white flex items-center justify-center font-bold text-base shadow-md border-2 border-white/80 ${user.avatar_color}`}>
+                  <div className={`w-11 h-11 rounded-full text-white flex items-center justify-center font-bold text-base shadow-md border-2 border-white/80 ${colorAvatar(user.rol)}`}>
                     {user.avatar_iniciales}
                   </div>
                   <span className={`absolute bottom-0 right-0 w-3 h-3 ${currentRoleStyle.dot} border-2 border-white rounded-full`}></span>
@@ -175,7 +175,7 @@ export const Navbar: React.FC = () => {
                                   : 'bg-white hover:bg-slate-50 border-slate-200'
                               }`}
                             >
-                              <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white ${u.avatar_color}`}>
+                              <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white ${colorAvatar(u.rol)}`}>
                                 {u.avatar_iniciales}
                               </div>
 
@@ -223,7 +223,7 @@ export const Navbar: React.FC = () => {
                     /* Cuenta real del ERP (token del portal de RRHH) */
                     <div className="p-4 bg-slate-50 border-b border-slate-200">
                       <div className="flex items-start space-x-3">
-                        <div className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${user.avatar_color}`}>
+                        <div className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${colorAvatar(user.rol)}`}>
                           {user.avatar_iniciales}
                         </div>
                         <div className="min-w-0">

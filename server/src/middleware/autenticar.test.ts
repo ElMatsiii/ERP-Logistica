@@ -401,17 +401,42 @@ describe('HTTP · AUTH_MODO=simulado', () => {
     assert.equal(body.usuario.rol, 'OPERADOR_RECEPCION');
   });
 
-  it('GET /api/auth/config informa modo simulado, sin identificación', async () => {
+  it('GET /api/auth/config informa modo simulado y los usuarios de prueba, sin identificación', async () => {
     const { status, body } = await pedir(s, 'GET', '/api/auth/config');
     assert.equal(status, 200);
-    assert.deepEqual(body, { modo: 'simulado', acepta_tokens: true });
+    assert.equal(body.modo, 'simulado');
+    assert.equal(body.acepta_tokens, true);
+    assert.deepEqual(
+      body.usuarios_simulados.map((u: any) => [u.id_empleado, u.rol]),
+      [[E.COORDINADOR, 'COORDINADOR_LOGISTICA'], [E.DESPACHO, 'OPERADOR_DESPACHO'], [E.RECEPCION, 'OPERADOR_RECEPCION']]
+    );
+  });
+
+  it('usuarios_simulados solo trae los campos para elegir (sin RUT, permisos ni credenciales)', async () => {
+    const { body } = await pedir(s, 'GET', '/api/auth/config');
+    for (const u of body.usuarios_simulados) {
+      assert.deepEqual(Object.keys(u).sort(), [
+        'avatar_color', 'avatar_iniciales', 'descripcion', 'id_empleado', 'nombre', 'pestañas_permitidas', 'rol', 'rol_nombre',
+      ]);
+    }
+    assert.doesNotMatch(JSON.stringify(body.usuarios_simulados), /rut|permisos|password|token|secret/i);
+  });
+
+  it('cada usuario simulado de la config entra con x-user-id', async () => {
+    const { body } = await pedir(s, 'GET', '/api/auth/config');
+    for (const u of body.usuarios_simulados) {
+      const me = await pedir(s, 'GET', '/api/auth/me', { 'x-user-id': String(u.id_empleado) });
+      assert.equal(me.status, 200);
+      assert.equal(me.body.usuario.rol, u.rol);
+    }
   });
 
   it('sin JWT_SECRET: login y Bearer → 503; las cabeceras siguen funcionando', async () => {
     const sinSecreto = await levantar({ ...CONFIG_SIMULADO, jwtSecret: null });
     try {
       const config = await pedir(sinSecreto, 'GET', '/api/auth/config');
-      assert.deepEqual(config.body, { modo: 'simulado', acepta_tokens: false });
+      assert.equal(config.body.modo, 'simulado');
+      assert.equal(config.body.acepta_tokens, false);
       const conToken = await pedir(sinSecreto, 'GET', '/api/logistica/auth/me', bearer(await tokenDe(E.DESPACHO)));
       assert.equal(conToken.status, 503);
       assert.equal(conToken.body.error, MENSAJES_AUTH.JWT_NO_CONFIGURADO);

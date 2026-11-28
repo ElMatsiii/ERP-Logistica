@@ -1,7 +1,7 @@
-import React from 'react';
-import { AlertCircle, ExternalLink, Info, Loader2, LogIn, RefreshCw, WifiOff } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, ExternalLink, FlaskConical, Info, Loader2, LogIn, RefreshCw, WifiOff } from 'lucide-react';
 import { useSesion } from '../context/AuthContext';
-import { urlPortalRrhh } from '../config';
+import { colorAvatar, urlPortalRrhh } from '../config';
 
 /** Ladrillo LEGO de la marca (mismo que el Navbar) */
 const LogoLesGo: React.FC = () => (
@@ -74,8 +74,88 @@ const BotonPortal: React.FC = () => {
 };
 
 /**
+ * Solo AUTH_MODO=simulado (desarrollo y pruebas): entrar como uno de los usuarios de prueba que entrega
+ * el servidor en GET /api/auth/config. Son datos ficticios; nunca aparece en modo jwt.
+ */
+const BloqueUsuariosSimulados: React.FC = () => {
+  const { config, loginSimulado } = useSesion();
+  const [entrando, setEntrando] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (config?.modo !== 'simulado') return null;
+  const usuarios = config.usuarios_simulados ?? [];
+
+  const entrar = async (idEmpleado: number) => {
+    setEntrando(idEmpleado);
+    setError(null);
+    try {
+      await loginSimulado(idEmpleado);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo entrar como usuario simulado');
+      setEntrando(null);
+    }
+  };
+
+  return (
+    <div className="mt-6 pt-5 border-t border-dashed border-slate-300">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <FlaskConical className="w-4 h-4 text-[#e52521]" />
+          <span className="text-sm font-bold text-slate-800">Modo desarrollo: usuarios simulados</span>
+        </div>
+        <span className="text-[10px] font-bold bg-[#ffcf00] text-slate-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+          Simulado
+        </span>
+      </div>
+      <p className="text-xs text-slate-500 mt-1">
+        El servidor está en AUTH_MODO=simulado. Entra como un perfil de prueba para revisar vistas y permisos.
+      </p>
+
+      {error && (
+        <div className="mt-3">
+          <CajaAviso tipo="error">{error}</CajaAviso>
+        </div>
+      )}
+
+      <div className="mt-3 space-y-2">
+        {usuarios.map((u) => (
+          <button
+            key={u.id_empleado}
+            onClick={() => entrar(u.id_empleado)}
+            disabled={entrando !== null}
+            className="w-full text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-red-200 disabled:opacity-60 transition-all flex items-center space-x-3"
+          >
+            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white ${colorAvatar(u.rol)}`}>
+              {u.avatar_iniciales}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-slate-900 truncate">{u.nombre}</p>
+              <p className="text-xs text-slate-600 truncate">{u.rol_nombre}</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {u.pestañas_permitidas.map((tab) => (
+                  <span key={tab} className="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
+                    {tab === 'emision' ? 'Emisión' : tab === 'tracking' ? 'Tracking' : 'Muelle'}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {entrando === u.id_empleado ? (
+              <Loader2 className="w-4 h-4 text-[#e52521] animate-spin" />
+            ) : (
+              <LogIn className="w-4 h-4 text-slate-400" />
+            )}
+          </button>
+        ))}
+        {usuarios.length === 0 && <p className="text-xs text-slate-500">El servidor no entregó usuarios de prueba.</p>}
+      </div>
+    </div>
+  );
+};
+
+/**
  * Lo que se ve sin sesión: verificando, sin conexión o el acceso por el portal del ERP.
  * Logística no tiene formulario de login: la sesión se inicia en el portal de RRHH, que redirige con el token.
+ * En AUTH_MODO=simulado se agregan los usuarios de prueba.
  */
 export const PantallaAcceso: React.FC = () => {
   const { estado, aviso, reintentar } = useSesion();
@@ -122,6 +202,7 @@ export const PantallaAcceso: React.FC = () => {
         {aviso && <CajaAviso tipo={aviso.tipo}>{aviso.texto}</CajaAviso>}
         <BotonPortal />
       </div>
+      <BloqueUsuariosSimulados />
     </MarcoAcceso>
   );
 };

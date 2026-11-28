@@ -1,15 +1,45 @@
 import type { Request, Response } from 'express';
 import type { ConfigAuth, ModoAuth } from '../config/auth.config.js';
 import { AuthError, type SesionService } from '../services/sesion.service.js';
+import { USUARIOS_LOGISTICA } from '../services/auth.service.js';
+import type { RolLogistica, UsuarioLogistica } from '../types/auth.types.js';
 
 export const MENSAJE_DATOS_LOGIN = 'Debes indicar email y contraseña';
 export const MENSAJE_LOGIN_EN_PORTAL = 'El inicio de sesión se hace desde el portal del ERP (RRHH)';
+
+/** Usuario de prueba para entrar en AUTH_MODO=simulado (datos ficticios de USUARIOS_LOGISTICA, nunca de RRHH). */
+export interface UsuarioSimuladoPublico {
+  id_empleado: number;
+  nombre: string;
+  rol: RolLogistica;
+  rol_nombre: string;
+  descripcion: string;
+  avatar_iniciales: string;
+  avatar_color: string;
+  pestañas_permitidas: UsuarioLogistica['pestañas_permitidas'];
+}
 
 /** Respuesta pública de GET /api/auth/config: solo cómo se puede iniciar sesión, nada sensible. */
 export interface ConfigAuthPublica {
   modo: ModoAuth;
   /** true si JWT_SECRET está configurado: el servidor puede validar los tokens del portal de RRHH */
   acepta_tokens: boolean;
+  /** Solo en AUTH_MODO=simulado: usuarios de prueba para entrar con x-user-id (desarrollo y pruebas) */
+  usuarios_simulados?: UsuarioSimuladoPublico[];
+}
+
+/** Solo los campos necesarios para elegir un usuario de prueba (sin RUT ni permisos internos). */
+function usuariosSimuladosPublicos(): UsuarioSimuladoPublico[] {
+  return USUARIOS_LOGISTICA.map((u) => ({
+    id_empleado: u.id_empleado,
+    nombre: u.nombre,
+    rol: u.rol,
+    rol_nombre: u.rol_nombre,
+    descripcion: u.descripcion,
+    avatar_iniciales: u.avatar_iniciales,
+    avatar_color: u.avatar_color,
+    pestañas_permitidas: [...u.pestañas_permitidas],
+  }));
 }
 
 /**
@@ -29,6 +59,9 @@ export class SesionController {
       modo: this.configAuth.modo,
       acepta_tokens: this.configAuth.jwtSecret !== null,
     };
+    if (this.configAuth.modo === 'simulado') {
+      respuesta.usuarios_simulados = usuariosSimuladosPublicos();
+    }
     res.json(respuesta);
   };
 
